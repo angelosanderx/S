@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>App de Campo — PNS 2026</title>
+<meta name="theme-color" content="#2563eb">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ===================== TELA: PIN DE ACESSO ===================== -->
+<section id="tela-pin" class="tela tela-cheia">
+  <div class="cartao-identificacao">
+    <h1>🔒 PNS 2026 — Campo</h1>
+    <p class="subtitulo">Digite o código de acesso da equipe</p>
+    <input type="password" inputmode="numeric" id="campo-pin" placeholder="Código de acesso"
+      style="text-align:center;font-size:20px;letter-spacing:4px;margin-bottom:10px">
+    <div id="erro-pin" class="texto-erro oculto">Código incorreto.</div>
+    <button id="btn-confirmar-pin" class="botao-grande">Entrar</button>
+  </div>
+</section>
+
+<!-- ===================== TELA: IDENTIFICAÇÃO ===================== -->
+<section id="tela-identificacao" class="tela tela-cheia oculto">
+  <div class="cartao-identificacao">
+    <h1>PNS 2026 — Campo de Entrevista</h1>
+    <p class="subtitulo">Quem é você?</p>
+    <div id="lista-entrevistadores" class="lista-botoes-grandes"></div>
+    <button id="btn-abrir-cadastro-entrevistador" class="botao-link">+ Cadastrar outro entrevistador</button>
+  </div>
+</section>
+
+<!-- ===================== TELA: MAPA (principal) ===================== -->
+<section id="tela-mapa" class="tela tela-cheia oculto">
+  <header class="barra-topo">
+    <button id="btn-menu" class="botao-icone" aria-label="Menu">☰</button>
+    <div class="contador" id="contador-realizados">0 de 0 realizados</div>
+    <button id="btn-legenda" class="botao-icone" aria-label="Legenda">🎨</button>
+  </header>
+
+  <div class="barra-filtros" id="barra-filtros">
+    <select id="filtro-setor">
+      <option value="">Todos os setores</option>
+    </select>
+    <button id="btn-lista-setor" class="chip-toggle oculto">📋 Lista do setor</button>
+    <select id="filtro-status">
+      <option value="">Todos os status</option>
+    </select>
+    <label class="chip-toggle">
+      <input type="checkbox" id="filtro-so-meus">
+      Só os meus
+    </label>
+  </div>
+
+  <div id="mapa" class="mapa"></div>
+
+  <button id="btn-localizar" class="botao-flutuante botao-flutuante-esquerda" aria-label="Minha localização">📍</button>
+  <button id="btn-modo-selecao" class="botao-pill-flutuante" aria-label="Selecionar domicílios para associar a mim">☑️ Associar meus domicílios</button>
+
+  <div id="barra-selecao" class="barra-selecao oculto">
+    <span id="contagem-selecao">0 selecionado(s)</span>
+    <div class="linha-controles">
+      <button id="btn-cancelar-selecao" class="botao-secundario">Cancelar</button>
+      <button id="btn-atribuir-selecao" class="botao-primario">Atribuir a mim</button>
+    </div>
+  </div>
+
+  <div id="painel-legenda" class="painel-flutuante oculto">
+    <h3>Status</h3>
+    <ul id="lista-legenda" class="lista-legenda"></ul>
+    <h3>Entrevistadores</h3>
+    <p class="texto-ajuda" style="margin-bottom:6px">Cor de preenchimento do pino quando atribuído</p>
+    <ul id="lista-legenda-entrevistadores" class="lista-legenda"></ul>
+    <button class="botao-secundario fechar-painel" data-fechar="painel-legenda">Fechar</button>
+  </div>
+</section>
+
+<!-- ===================== FICHA DO DOMICÍLIO ===================== -->
+<section id="ficha-domicilio" class="tela tela-sheet oculto">
+  <header class="barra-topo">
+    <button class="botao-icone" data-fechar="ficha-domicilio" aria-label="Fechar">✕</button>
+    <div class="codigo-domicilio" id="ficha-codigo"></div>
+  </header>
+
+  <div class="conteudo-scroll">
+    <div class="ficha-cabecalho">
+      <h2 id="ficha-endereco"></h2>
+      <div class="ficha-meta" id="ficha-meta"></div>
+      <div class="ficha-badges" id="ficha-badges"></div>
+      <div class="ficha-contato" id="ficha-contato"></div>
+    </div>
+
+    <div class="ficha-secao">
+      <div class="linha-controles">
+        <button id="btn-atribuir" class="botao-primario">Atribuir a mim</button>
+        <select id="select-status"></select>
+      </div>
+      <input type="text" id="campo-status-outro" class="oculto" placeholder="Descreva o status">
+      <label class="rotulo-campo" for="campo-obs">Observações</label>
+      <textarea id="campo-obs" rows="3" placeholder="Ex.: voltar sábado de manhã"></textarea>
+    </div>
+
+    <div class="ficha-secao ficha-acoes">
+      <button id="btn-repassar" class="botao-secundario">🔄 Repassar</button>
+      <button id="btn-etiqueta" class="botao-secundario">🏷️ Etiqueta de endereço</button>
+      <button id="btn-carta-recusa" class="botao-secundario oculto">✉️ Carta de recusa</button>
+      <button id="btn-excluir-carta-recusa" class="botao-secundario oculto">🗑️ Excluir solicitação de carta</button>
+    </div>
+
+    <div class="ficha-secao">
+      <h3>Roteiro de campo (setor <span id="roteiro-setor-num"></span>)</h3>
+      <div id="lista-roteiro" class="lista-roteiro"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== MODAL: CLASSIFICAR STATUS ===================== -->
+<section id="modal-status" class="tela tela-modal oculto">
+  <div class="caixa-modal">
+    <h3>Classificar status</h3>
+    <div id="opcoes-status" class="opcoes-nome-carta"></div>
+    <div class="linha-controles">
+      <button class="botao-link" data-fechar="modal-status">Cancelar</button>
+      <button id="btn-confirmar-status" class="botao-primario">Salvar</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== MODAL: REPASSE ===================== -->
+<section id="modal-repasse" class="tela tela-modal oculto">
+  <div class="caixa-modal">
+    <h3>Repassar domicílio</h3>
+    <p>Escolha para quem repassar:</p>
+    <div id="lista-repasse-destinos" class="lista-botoes-grandes"></div>
+    <button class="botao-link" data-fechar="modal-repasse">Cancelar</button>
+  </div>
+</section>
+
+<!-- ===================== MODAL: NOME DO MORADOR NA CARTA DE RECUSA ===================== -->
+<section id="modal-carta-recusa" class="tela tela-modal oculto">
+  <div class="caixa-modal">
+    <h3>Carta de recusa — nome do morador</h3>
+    <p class="texto-ajuda">Escolha como o morador será identificado na carta.</p>
+    <div id="opcoes-nome-carta" class="opcoes-nome-carta"></div>
+    <div id="erro-nome-carta" class="texto-erro oculto">Preencha um nome para continuar.</div>
+    <div class="linha-controles">
+      <button class="botao-link" data-fechar="modal-carta-recusa">Cancelar</button>
+      <button id="btn-confirmar-carta-recusa" class="botao-primario">Gerar carta</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== MODAL: CADASTRAR ENTREVISTADOR ===================== -->
+<section id="modal-cadastro-entrevistador" class="tela tela-modal oculto">
+  <div class="caixa-modal">
+    <h3>Cadastrar entrevistador</h3>
+    <label class="rotulo-campo" for="campo-novo-nome">Nome</label>
+    <input id="campo-novo-nome" type="text" placeholder="Nome completo">
+    <label class="rotulo-campo" for="campo-nova-letra">Letra de código (única)</label>
+    <input id="campo-nova-letra" type="text" maxlength="3" placeholder="Ex.: J">
+    <div id="erro-cadastro-entrevistador" class="texto-erro oculto"></div>
+    <div class="linha-controles">
+      <button id="btn-salvar-entrevistador" class="botao-primario">Salvar</button>
+      <button class="botao-link" data-fechar="modal-cadastro-entrevistador">Cancelar</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== TELA: ETIQUETA INDIVIDUAL ===================== -->
+<section id="tela-etiqueta" class="tela tela-sheet oculto">
+  <header class="barra-topo">
+    <button class="botao-icone" data-fechar="tela-etiqueta" aria-label="Fechar">✕</button>
+    <div>Etiqueta de endereço</div>
+  </header>
+  <div class="conteudo-scroll">
+    <label class="rotulo-campo" for="et-nome">Nome</label>
+    <input id="et-nome" type="text">
+    <label class="rotulo-campo" for="et-logradouro">Logradouro</label>
+    <input id="et-logradouro" type="text">
+    <label class="rotulo-campo" for="et-numero">Número</label>
+    <input id="et-numero" type="text">
+    <label class="rotulo-campo" for="et-complemento">Complemento</label>
+    <input id="et-complemento" type="text">
+    <label class="rotulo-campo" for="et-bairro">Bairro</label>
+    <input id="et-bairro" type="text">
+    <label class="rotulo-campo" for="et-cidade-uf">Cidade/UF</label>
+    <input id="et-cidade-uf" type="text">
+    <label class="rotulo-campo" for="et-codigo">Código</label>
+    <input id="et-codigo" type="text">
+
+    <div class="preview-etiqueta-wrap">
+      <div class="etiqueta-preview" id="etiqueta-preview"></div>
+    </div>
+
+    <div class="linha-controles">
+      <button id="btn-gerar-etiqueta" class="botao-primario">Gerar / Imprimir</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== TELA: LISTA DE DOMICÍLIOS DO SETOR ===================== -->
+<section id="tela-lista-setor" class="tela tela-sheet oculto">
+  <header class="barra-topo">
+    <button class="botao-icone" data-fechar="tela-lista-setor" aria-label="Fechar">✕</button>
+    <div id="lista-setor-titulo">Domicílios do setor</div>
+  </header>
+  <div class="conteudo-scroll">
+    <div id="lista-setor-conteudo"></div>
+  </div>
+</section>
+
+<!-- ===================== TELA: ETIQUETAS EM LOTE ===================== -->
+<section id="tela-etiquetas-lote" class="tela tela-sheet oculto">
+  <header class="barra-topo">
+    <button class="botao-icone" data-fechar="tela-etiquetas-lote" aria-label="Fechar">✕</button>
+    <div>Etiquetas em lote</div>
+  </header>
+  <div class="conteudo-scroll">
+    <label class="rotulo-campo" for="lote-filtro-setor">Filtrar por setor (opcional)</label>
+    <select id="lote-filtro-setor">
+      <option value="">Todos os meus domicílios atribuídos</option>
+    </select>
+    <p id="lote-contagem" class="texto-ajuda"></p>
+    <div class="linha-controles">
+      <button id="btn-gerar-lote" class="botao-primario">Gerar folha de etiquetas</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== TELA: RESUMO DE ASSOCIAÇÕES PARA O SUPERVISOR ===================== -->
+<section id="tela-resumo-associacoes" class="tela tela-sheet oculto">
+  <header class="barra-topo">
+    <button class="botao-icone" data-fechar="tela-resumo-associacoes" aria-label="Fechar">✕</button>
+    <div>Associações para o supervisor</div>
+  </header>
+  <div class="conteudo-scroll">
+    <p class="texto-ajuda">
+      Domicílios que você associou a si mesmo e ainda não foram enviados ao supervisor.
+    </p>
+    <label class="chip-toggle">
+      <input type="checkbox" id="chk-incluir-enviados">
+      Incluir já enviados (reenviar tudo)
+    </label>
+    <div id="resumo-associacoes-lista"></div>
+    <div class="linha-controles">
+      <button id="btn-enviar-associacoes" class="botao-primario">📤 Enviar para o supervisor</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== MENU / CONFIGURAÇÕES ===================== -->
+<section id="menu-lateral" class="tela tela-menu oculto">
+  <div class="caixa-menu">
+    <h3>Menu</h3>
+    <div class="usuario-atual">Usuário: <strong id="menu-usuario-atual"></strong></div>
+    <button class="item-menu" id="btn-abrir-resumo-associacoes">📤 Enviar minhas associações</button>
+    <button class="item-menu" id="btn-etiquetas-lote">🏷️ Gerar etiquetas em lote</button>
+    <button class="item-menu" id="btn-exportar-backup">⬇️ Exportar backup</button>
+    <button class="item-menu" id="btn-importar-backup">⬆️ Importar backup</button>
+    <input type="file" id="input-importar-backup" accept="application/json" class="oculto">
+    <div id="status-dados-pessoais" class="texto-ajuda">Dados pessoais: —</div>
+    <button class="item-menu" id="btn-importar-dados-pessoais">🔐 Importar dados pessoais</button>
+    <input type="file" id="input-dados-pessoais" accept="application/json" class="oculto">
+    <div id="status-mapa-offline" class="texto-ajuda">Mapa offline: —</div>
+    <button class="item-menu" id="btn-baixar-tiles">🗺️ Baixar mapa offline (área visível)</button>
+    <button class="item-menu" id="btn-limpar-mapa-offline">🗑️ Limpar mapa offline</button>
+    <div id="progresso-tiles" class="oculto">
+      <progress id="barra-progresso-tiles" value="0" max="100"></progress>
+      <div id="texto-progresso-tiles" class="texto-ajuda"></div>
+    </div>
+    <button class="item-menu" id="btn-cadastrar-entrevistador-menu">👤 Cadastrar entrevistador</button>
+    <button class="item-menu" id="btn-trocar-usuario">🔁 Trocar usuário</button>
+    <p class="texto-ajuda">Recomendado: exporte o backup semanalmente.</p>
+    <button class="botao-link" data-fechar="menu-lateral">Fechar</button>
+  </div>
+</section>
+
+<!-- ===================== TELA: REVISAR/IMPRIMIR ETIQUETAS ===================== -->
+<section id="tela-impressao-etiquetas" class="tela tela-impressao oculto">
+  <header class="barra-topo barra-topo-impressao">
+    <span id="impressao-etiquetas-info"></span>
+    <button id="btn-imprimir-etiquetas" class="botao-secundario botao-imprimir">🖨️ Imprimir</button>
+    <button class="botao-icone botao-icone-claro" data-fechar="tela-impressao-etiquetas" aria-label="Fechar">✕</button>
+  </header>
+  <div id="area-impressao" class="area-impressao"></div>
+</section>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="dados.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
