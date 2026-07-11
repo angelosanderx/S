@@ -8,7 +8,7 @@
 
 // Mantida em sincronia manual com CACHE_VERSION em sw.js — só pra exibir no menu
 // e conferir facilmente se o celular já pegou a última atualização.
-const VERSAO_APP = 'v13';
+const VERSAO_APP = 'v14';
 
 const CHAVE_ESTADO = 'pns2026_estado_v1';
 
@@ -722,6 +722,7 @@ function atualizarContagemSelecao() {
   const n = domiciliosSelecionados.size;
   $('contagem-selecao').textContent = `${n} selecionado(s)`;
   $('btn-atribuir-selecao').disabled = n === 0;
+  $('btn-desassociar-selecao').disabled = n === 0;
 }
 
 function cancelarSelecao() {
@@ -751,6 +752,86 @@ function atribuirSelecionados() {
   cancelarSelecao();
   aplicarFiltros();
   alert(`${n} domicílio(s) atribuído(s) a você.`);
+}
+
+function desassociarSelecionados() {
+  if (!domiciliosSelecionados.size) return;
+  const n = domiciliosSelecionados.size;
+  if (!confirm(`Desassociar ${n} domicílio(s) selecionado(s)?`)) return;
+  domiciliosSelecionados.forEach((id) => {
+    const est = estadoDomicilio(id);
+    est.atribuido = false;
+    est.codigo = null;
+    est.atualizadoEm = agora();
+  });
+  salvarEstado();
+  cancelarSelecao();
+  aplicarFiltros();
+  alert(`${n} domicílio(s) desassociado(s).`);
+}
+
+// ---------------------------------------------------------------------
+// Meus domicílios associados (ver todos + desassociar individualmente)
+// ---------------------------------------------------------------------
+
+function abrirMeusAssociados() {
+  renderMeusAssociados();
+  mostrar('tela-meus-associados');
+}
+
+function renderMeusAssociados() {
+  const lista = DADOS.domicilios
+    .filter((d) => estadoDomicilio(d.id).atribuido)
+    .sort((a, b) => a.setor.localeCompare(b.setor) || (a.numDomicilio || 0) - (b.numDomicilio || 0));
+
+  $('meus-associados-contagem').textContent = lista.length
+    ? `${lista.length} domicílio(s) associado(s) a você`
+    : '';
+
+  const cont = $('meus-associados-lista');
+  if (!lista.length) {
+    cont.innerHTML = '<p class="vazio">Nenhum domicílio associado no momento.</p>';
+    return;
+  }
+
+  cont.innerHTML = lista.map((d) => {
+    const est = estadoDomicilio(d.id);
+    const statusLabel = (STATUS_POR_CHAVE[est.status] || {}).label || 'Sem classificação';
+    return `<div class="item-lista-setor" data-id="${d.id}">
+      <div class="item-lista-setor-cabec">
+        <span class="item-lista-setor-endereco">${d.logradouro || ''}, ${d.numero || 'S/N'}${d.complemento ? ' — ' + d.complemento : ''}</span>
+        ${est.codigo ? `<span class="item-lista-setor-codigo">${est.codigo}</span>` : ''}
+      </div>
+      <div class="texto-ajuda">Setor ${d.setor} · ${statusLabel}</div>
+      <div class="linha-controles" style="margin:8px 0 0">
+        <button class="botao-secundario btn-desassociar-item" data-id="${d.id}">Desassociar</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  cont.querySelectorAll('.item-lista-setor').forEach((el) => {
+    el.addEventListener('click', (ev) => {
+      if (ev.target.closest('.btn-desassociar-item')) return;
+      esconder('tela-meus-associados');
+      abrirFicha(el.dataset.id);
+    });
+  });
+  cont.querySelectorAll('.btn-desassociar-item').forEach((btn) => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      desassociarUm(btn.dataset.id);
+    });
+  });
+}
+
+function desassociarUm(id) {
+  const est = estadoDomicilio(id);
+  est.atribuido = false;
+  est.codigo = null;
+  est.atualizadoEm = agora();
+  salvarEstado();
+  renderMeusAssociados();
+  aplicarFiltros();
 }
 
 function popularFiltroSetores() {
@@ -1623,6 +1704,7 @@ function wireEventosGlobais() {
   $('btn-modo-selecao').addEventListener('click', alternarModoSelecao);
   $('btn-cancelar-selecao').addEventListener('click', cancelarSelecao);
   $('btn-atribuir-selecao').addEventListener('click', atribuirSelecionados);
+  $('btn-desassociar-selecao').addEventListener('click', desassociarSelecionados);
 
   $('btn-abrir-filtro-setor').addEventListener('click', () => {
     renderListaFiltroSetor();
@@ -1675,6 +1757,7 @@ function wireEventosGlobais() {
   $('btn-imprimir-etiquetas').addEventListener('click', imprimirEtiquetas);
 
   $('btn-abrir-resumo-associacoes').addEventListener('click', () => { esconder('menu-lateral'); abrirResumoAssociacoes(); });
+  $('btn-abrir-meus-associados').addEventListener('click', () => { esconder('menu-lateral'); abrirMeusAssociados(); });
   $('chk-incluir-enviados').addEventListener('change', renderResumoAssociacoes);
   $('btn-enviar-associacoes').addEventListener('click', enviarAssociacoesSupervisor);
 
