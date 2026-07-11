@@ -109,7 +109,8 @@ h1, h2, h3 { margin: 0 0 8px; }
   background: var(--cor-superficie);
   border-bottom: 1px solid var(--cor-borda);
 }
-.barra-filtros select {
+.barra-filtros select,
+.botao-filtro-setor {
   flex: 1 1 0;
   min-width: 0;
   padding: 8px 6px;
@@ -117,6 +118,13 @@ h1, h2, h3 { margin: 0 0 8px; }
   border: 1px solid var(--cor-borda);
   background: #fff;
   font-size: 14px;
+}
+.botao-filtro-setor {
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
 }
 .barra-filtros .chip-toggle {
   flex: 0 0 auto;
@@ -334,6 +342,20 @@ textarea { resize: vertical; }
   cursor: pointer;
 }
 .item-lista-setor:active { background: #f1f5f9; }
+
+.lista-checklist-setor { margin-top: 12px; }
+.item-checklist-setor {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 4px;
+  border-bottom: 1px solid #eef2f7;
+  font-size: 15px;
+  cursor: pointer;
+}
+.item-checklist-setor input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0; }
+.item-checklist-setor .item-checklist-setor-codigo { font-weight: 700; }
+.item-checklist-setor .item-checklist-setor-bairro { color: #475569; }
 .item-lista-setor-cabec { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
 .item-lista-setor-codigo { font-weight: 700; color: var(--cor-primaria); font-size: 13px; white-space: nowrap; }
 .item-lista-setor-endereco { font-weight: 600; }

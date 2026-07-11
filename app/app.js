@@ -8,7 +8,7 @@
 
 // Mantida em sincronia manual com CACHE_VERSION em sw.js — só pra exibir no menu
 // e conferir facilmente se o celular já pegou a última atualização.
-const VERSAO_APP = 'v9';
+const VERSAO_APP = 'v10';
 
 const CHAVE_ESTADO = 'pns2026_estado_v1';
 
@@ -148,6 +148,10 @@ const bairroPorSetor = (() => {
   return resultado;
 })();
 
+function nomeLocalidadeSetor(setor) {
+  return paraTituloProprio(setor.nomeZona || bairroPorSetor[setor.controle] || '');
+}
+
 // ---------------------------------------------------------------------
 // Dados pessoais (nome/telefone) — NÃO vêm em dados.js (que pode ser publicado
 // publicamente). Ficam num arquivo à parte, importado uma vez por aqui e
@@ -282,6 +286,7 @@ let camadaDeclutter = null;
 let marcadoresPorId = {};
 let modoSelecao = false;
 let filtroSoMeusAtivo = false;
+const filtroSetoresSelecionados = new Set(); // vazio = todos os setores
 let marcadorLocalizacao = null;
 let circuloPrecisaoLocalizacao = null;
 const domiciliosSelecionados = new Set();
@@ -312,9 +317,9 @@ async function initMapa() {
       },
     }).addTo(camadaSetores);
 
-    const nomeLocalidade = setor.nomeZona || bairroPorSetor[setor.controle];
+    const nomeLocalidade = nomeLocalidadeSetor(setor);
     if (nomeLocalidade) {
-      camadaPoligono.bindTooltip(paraTituloProprio(nomeLocalidade), {
+      camadaPoligono.bindTooltip(nomeLocalidade, {
         permanent: true,
         direction: 'center',
         className: 'rotulo-bairro',
@@ -397,12 +402,11 @@ function renderMarcadores() {
   camadaMarcadores.clearLayers();
   marcadoresPorId = {};
 
-  const filtroSetor = $('filtro-setor').value;
   const filtroStatus = $('filtro-status').value;
 
   DADOS.domicilios.forEach((d) => {
     const est = estadoDomicilio(d.id);
-    if (filtroSetor && d.setor !== filtroSetor) return;
+    if (filtroSetoresSelecionados.size && !filtroSetoresSelecionados.has(d.setor)) return;
     if (filtroStatus && est.status !== filtroStatus) return;
     if (filtroSoMeusAtivo && !est.atribuido) return;
     if (d.lat == null || d.lng == null) return;
@@ -560,19 +564,39 @@ function solicitarCartaDoMapa(id) {
 function aplicarFiltros() {
   renderMarcadores();
   atualizarContador();
-  $('btn-lista-setor').classList.toggle('oculto', !$('filtro-setor').value);
+  atualizarBotaoFiltroSetor();
+  $('btn-lista-setor').classList.toggle('oculto', filtroSetoresSelecionados.size !== 1);
+}
+
+function atualizarBotaoFiltroSetor() {
+  const n = filtroSetoresSelecionados.size;
+  let texto = 'Todos os setores';
+  if (n === 1) {
+    const s = setoresPorControle[[...filtroSetoresSelecionados][0]];
+    const nome = s && nomeLocalidadeSetor(s);
+    texto = `Setor ${[...filtroSetoresSelecionados][0]}${nome ? ' — ' + nome : ''}`;
+  } else if (n > 1) {
+    texto = `${n} setores selecionados`;
+  }
+  $('btn-abrir-filtro-setor').textContent = texto;
 }
 
 function centralizarNoFiltroSetor() {
-  const setor = $('filtro-setor').value;
-  if (setor) {
-    const s = setoresPorControle[setor];
-    const temPoligono = s && s.geojson && s.geojson.coordinates && s.geojson.coordinates.length;
-    const bounds = temPoligono
-      ? L.geoJSON(s.geojson).getBounds()
-      : domiciliosDoSetor(setor).filter((d) => d.lat != null && d.lng != null).map((d) => [d.lat, d.lng]);
-    if ((Array.isArray(bounds) && bounds.length) || (!Array.isArray(bounds) && bounds.isValid())) {
-      mapaLeaflet.fitBounds(bounds, { padding: [30, 30], maxZoom: 17 });
+  if (filtroSetoresSelecionados.size) {
+    const grupo = L.featureGroup();
+    filtroSetoresSelecionados.forEach((codigo) => {
+      const s = setoresPorControle[codigo];
+      const temPoligono = s && s.geojson && s.geojson.coordinates && s.geojson.coordinates.length;
+      if (temPoligono) {
+        L.geoJSON(s.geojson).addTo(grupo);
+      } else {
+        domiciliosDoSetor(codigo).forEach((d) => {
+          if (d.lat != null && d.lng != null) L.marker([d.lat, d.lng]).addTo(grupo);
+        });
+      }
+    });
+    if (grupo.getLayers().length) {
+      mapaLeaflet.fitBounds(grupo.getBounds(), { padding: [30, 30], maxZoom: 17 });
     }
   } else {
     const lats = DADOS.domicilios.map((d) => d.lat).filter((v) => v != null);
@@ -584,9 +608,39 @@ function centralizarNoFiltroSetor() {
   }
 }
 
-function onMudarFiltroSetor() {
-  centralizarNoFiltroSetor();
+function alternarSetorFiltro(codigo, marcado) {
+  if (marcado) filtroSetoresSelecionados.add(codigo);
+  else filtroSetoresSelecionados.delete(codigo);
   aplicarFiltros();
+}
+
+function setoresFiltradosPorBusca(textoBusca) {
+  const busca = (textoBusca || '').trim().toLowerCase();
+  const setoresOrdenados = [...DADOS.setores].sort((a, b) => a.controle.localeCompare(b.controle));
+  if (!busca) return setoresOrdenados;
+  return setoresOrdenados.filter((s) => (
+    s.controle.includes(busca) || nomeLocalidadeSetor(s).toLowerCase().includes(busca)
+  ));
+}
+
+function renderListaFiltroSetor(textoBusca) {
+  const visiveis = setoresFiltradosPorBusca(textoBusca);
+  const cont = $('lista-filtro-setor');
+  cont.innerHTML = visiveis.map((s) => {
+    const nome = nomeLocalidadeSetor(s);
+    const marcado = filtroSetoresSelecionados.has(s.controle) ? 'checked' : '';
+    return `<label class="item-checklist-setor">
+      <input type="checkbox" data-setor="${s.controle}" ${marcado}>
+      <span>
+        <span class="item-checklist-setor-codigo">${s.controle}</span>
+        ${nome ? `<span class="item-checklist-setor-bairro"> — ${nome}</span>` : ''}
+      </span>
+    </label>`;
+  }).join('') || '<p class="vazio">Nenhum setor encontrado.</p>';
+
+  cont.querySelectorAll('input[type="checkbox"]').forEach((chk) => {
+    chk.addEventListener('change', () => alternarSetorFiltro(chk.dataset.setor, chk.checked));
+  });
 }
 
 function domiciliosDoSetor(setor) {
@@ -596,8 +650,8 @@ function domiciliosDoSetor(setor) {
 }
 
 function abrirListaSetor() {
-  const setor = $('filtro-setor').value;
-  if (!setor) return;
+  const [setor] = filtroSetoresSelecionados;
+  if (filtroSetoresSelecionados.size !== 1 || !setor) return;
   const lista = domiciliosDoSetor(setor);
   $('lista-setor-titulo').textContent = `Domicílios do setor ${setor}`;
   const cont = $('lista-setor-conteudo');
@@ -686,16 +740,16 @@ function atribuirSelecionados() {
 }
 
 function popularFiltroSetores() {
-  const selects = [$('filtro-setor'), $('lote-filtro-setor')];
   const setoresOrdenados = [...DADOS.setores].sort((a, b) => a.controle.localeCompare(b.controle));
-  selects.forEach((sel) => {
-    setoresOrdenados.forEach((s) => {
-      const opt = document.createElement('option');
-      opt.value = s.controle;
-      opt.textContent = `Setor ${s.controle}${s.nomeZona ? ' — ' + s.nomeZona : ''}`;
-      sel.appendChild(opt);
-    });
+  setoresOrdenados.forEach((s) => {
+    const opt = document.createElement('option');
+    opt.value = s.controle;
+    const nome = nomeLocalidadeSetor(s);
+    opt.textContent = `Setor ${s.controle}${nome ? ' — ' + nome : ''}`;
+    $('lote-filtro-setor').appendChild(opt);
   });
+  renderListaFiltroSetor();
+  atualizarBotaoFiltroSetor();
 }
 
 function popularSelectStatus() {
@@ -1556,7 +1610,26 @@ function wireEventosGlobais() {
   $('btn-cancelar-selecao').addEventListener('click', cancelarSelecao);
   $('btn-atribuir-selecao').addEventListener('click', atribuirSelecionados);
 
-  $('filtro-setor').addEventListener('change', onMudarFiltroSetor);
+  $('btn-abrir-filtro-setor').addEventListener('click', () => {
+    renderListaFiltroSetor();
+    mostrar('tela-filtro-setor');
+  });
+  $('btn-fechar-filtro-setor').addEventListener('click', () => {
+    esconder('tela-filtro-setor');
+    $('busca-filtro-setor').value = '';
+    centralizarNoFiltroSetor();
+  });
+  $('busca-filtro-setor').addEventListener('input', (e) => renderListaFiltroSetor(e.target.value));
+  $('btn-marcar-todos-setores').addEventListener('click', () => {
+    setoresFiltradosPorBusca($('busca-filtro-setor').value).forEach((s) => filtroSetoresSelecionados.add(s.controle));
+    renderListaFiltroSetor($('busca-filtro-setor').value);
+    aplicarFiltros();
+  });
+  $('btn-limpar-filtro-setor').addEventListener('click', () => {
+    filtroSetoresSelecionados.clear();
+    renderListaFiltroSetor($('busca-filtro-setor').value);
+    aplicarFiltros();
+  });
   $('btn-lista-setor').addEventListener('click', abrirListaSetor);
   $('filtro-status').addEventListener('change', aplicarFiltros);
   $('btn-so-meus').addEventListener('click', () => {

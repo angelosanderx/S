@@ -44,9 +44,7 @@
   </header>
 
   <div class="barra-filtros" id="barra-filtros">
-    <select id="filtro-setor">
-      <option value="">Todos os setores</option>
-    </select>
+    <button id="btn-abrir-filtro-setor" class="botao-filtro-setor">Todos os setores</button>
     <button id="btn-lista-setor" class="chip-toggle oculto">📋 Lista do setor</button>
     <select id="filtro-status">
       <option value="">Todos os status</option>
@@ -197,6 +195,22 @@
     <div class="linha-controles">
       <button id="btn-gerar-etiqueta" class="botao-primario">Gerar / Imprimir</button>
     </div>
+  </div>
+</section>
+
+<!-- ===================== TELA: FILTRAR SETORES (multi-seleção) ===================== -->
+<section id="tela-filtro-setor" class="tela tela-sheet oculto">
+  <header class="barra-topo">
+    <button id="btn-fechar-filtro-setor" class="botao-icone" aria-label="Fechar">✕</button>
+    <div>Filtrar por setor</div>
+  </header>
+  <div class="conteudo-scroll">
+    <input type="text" id="busca-filtro-setor" placeholder="Buscar por código ou bairro">
+    <div class="linha-controles">
+      <button id="btn-marcar-todos-setores" class="botao-secundario">Marcar todos</button>
+      <button id="btn-limpar-filtro-setor" class="botao-secundario">Limpar seleção</button>
+    </div>
+    <div id="lista-filtro-setor" class="lista-checklist-setor"></div>
   </div>
 </section>
 
