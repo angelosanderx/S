@@ -8,7 +8,7 @@
 
 // Mantida em sincronia manual com CACHE_VERSION em sw.js — só pra exibir no menu
 // e conferir facilmente se o celular já pegou a última atualização.
-const VERSAO_APP = 'v11';
+const VERSAO_APP = 'v12';
 
 const CHAVE_ESTADO = 'pns2026_estado_v1';
 
@@ -212,6 +212,12 @@ function esconder(id) { $(id).classList.add('oculto'); }
 document.addEventListener('click', (ev) => {
   const alvo = ev.target.closest('[data-fechar]');
   if (alvo) esconder(alvo.dataset.fechar);
+
+  // Modais e o menu lateral ocupam a tela toda com um fundo escurecido em volta
+  // da caixa — clicar nesse fundo (fora da caixa) fecha, igual clicar no "x".
+  if (ev.target.classList.contains('tela-modal') || ev.target.classList.contains('tela-menu')) {
+    esconder(ev.target.id);
+  }
 });
 
 // ---------------------------------------------------------------------
