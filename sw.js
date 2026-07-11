@@ -2,7 +2,7 @@
 // Bump em CACHE_VERSION a cada deploy para invalidar o cache anterior.
 'use strict';
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_SHELL = `pns2026-shell-${CACHE_VERSION}`;
 
 const ARQUIVOS_PRECACHE = [
