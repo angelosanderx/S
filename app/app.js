@@ -8,7 +8,7 @@
 
 // Mantida em sincronia manual com CACHE_VERSION em sw.js — só pra exibir no menu
 // e conferir facilmente se o celular já pegou a última atualização.
-const VERSAO_APP = 'v23';
+const VERSAO_APP = 'v24';
 
 const CHAVE_ESTADO = 'pns2026_estado_v1';
 
@@ -604,6 +604,7 @@ function popupDomicilio(d) {
     <div class="popup-botoes">
       <button class="botao-primario" onclick="atribuirOuRemoverDoMapa('${d.id}')">${textoBotaoAtribuir}</button>
       <button class="botao-secundario" onclick="abrirEscolhaAtribuirOutroMapa('${d.id}')">👥 Atribuir a outro</button>
+      ${est.atribuido ? `<button class="botao-secundario" onclick="abrirRepasseDoMapa('${d.id}')">🔄 Repassar</button>` : ''}
       <button class="botao-secundario" onclick="mapaLeaflet.closePopup(); abrirFicha('${d.id}')">📋 Roteiro completo</button>
       <button class="botao-secundario" onclick="solicitarCartaDoMapa('${d.id}')">✉️ Carta de recusa</button>
       ${est.cartaRecusaSolicitadaEm ? `<button class="botao-secundario" onclick="excluirSolicitacaoCarta('${d.id}')">🗑️ Excluir solicitação de carta</button>` : ''}
@@ -1156,6 +1157,18 @@ async function compartilharOuCopiar(texto) {
 // Repasse
 // ---------------------------------------------------------------------
 
+// Mantém a atribuição original — o pino mostra as duas cores (metade de cada
+// entrevistador) até alguém assumir de vez com "Atribuir a mim"/"Atribuir a outro",
+// que aí sim substitui e limpa o repasse.
+function repassarDomicilio(id, destino) {
+  const d = domiciliosPorId[id];
+  const est = estadoDomicilio(id);
+  est.repassadoPara = destino;
+  est.atualizadoEm = agora();
+  salvarEstado();
+  compartilharOuCopiar(REPASSE_TEMPLATE(d, estado.usuario, destino));
+}
+
 function abrirModalRepasse() {
   const cont = $('lista-repasse-destinos');
   cont.innerHTML = '';
@@ -1170,18 +1183,19 @@ function abrirModalRepasse() {
 }
 
 function confirmarRepasse(destino) {
-  const d = domiciliosPorId[fichaAtualId];
-  const est = estadoDomicilio(fichaAtualId);
-  // Mantém a atribuição original — o pino mostra as duas cores (metade de cada
-  // entrevistador) até alguém assumir de vez com "Atribuir a mim"/"Atribuir a outro",
-  // que aí sim substitui e limpa o repasse.
-  est.repassadoPara = destino;
-  est.atualizadoEm = agora();
-  salvarEstado();
   esconder('modal-repasse');
+  repassarDomicilio(fichaAtualId, destino);
   abrirFicha(fichaAtualId);
   aplicarFiltros();
-  compartilharOuCopiar(REPASSE_TEMPLATE(d, estado.usuario, destino));
+}
+
+function abrirRepasseDoMapa(id) {
+  mapaLeaflet.closePopup();
+  abrirEscolherEntrevistador('Repassar para quem?', { incluirEuMesmo: false }, (nome) => {
+    repassarDomicilio(id, nome);
+    aplicarFiltros();
+    reabrirPopupDomicilio(id);
+  });
 }
 
 // ---------------------------------------------------------------------
