@@ -8,7 +8,7 @@
 
 // Mantida em sincronia manual com CACHE_VERSION em sw.js — só pra exibir no menu
 // e conferir facilmente se o celular já pegou a última atualização.
-const VERSAO_APP = 'v10';
+const VERSAO_APP = 'v11';
 
 const CHAVE_ESTADO = 'pns2026_estado_v1';
 
@@ -579,6 +579,14 @@ function atualizarBotaoFiltroSetor() {
     texto = `${n} setores selecionados`;
   }
   $('btn-abrir-filtro-setor').textContent = texto;
+  $('btn-limpar-filtro-setor-rapido').classList.toggle('oculto', n === 0);
+}
+
+function limparFiltroSetor() {
+  filtroSetoresSelecionados.clear();
+  renderListaFiltroSetor($('busca-filtro-setor').value);
+  aplicarFiltros();
+  if (mapaLeaflet) centralizarNoFiltroSetor();
 }
 
 function centralizarNoFiltroSetor() {
@@ -1629,6 +1637,10 @@ function wireEventosGlobais() {
     filtroSetoresSelecionados.clear();
     renderListaFiltroSetor($('busca-filtro-setor').value);
     aplicarFiltros();
+  });
+  $('btn-limpar-filtro-setor-rapido').addEventListener('click', (e) => {
+    e.stopPropagation();
+    limparFiltroSetor();
   });
   $('btn-lista-setor').addEventListener('click', abrirListaSetor);
   $('filtro-status').addEventListener('change', aplicarFiltros);

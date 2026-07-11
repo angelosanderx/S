@@ -109,8 +109,7 @@ h1, h2, h3 { margin: 0 0 8px; }
   background: var(--cor-superficie);
   border-bottom: 1px solid var(--cor-borda);
 }
-.barra-filtros select,
-.botao-filtro-setor {
+.barra-filtros select {
   flex: 1 1 0;
   min-width: 0;
   padding: 8px 6px;
@@ -119,13 +118,40 @@ h1, h2, h3 { margin: 0 0 8px; }
   background: #fff;
   font-size: 14px;
 }
+.grupo-filtro-setor {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+}
 .botao-filtro-setor {
+  width: 100%;
+  padding: 8px 28px 8px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--cor-borda);
+  background: #fff;
+  font-size: 14px;
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
 }
+.botao-limpar-chip {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: #cbd5e1;
+  color: #1e293b;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+.botao-limpar-chip:active { background: #94a3b8; }
 .barra-filtros .chip-toggle {
   flex: 0 0 auto;
   padding: 8px 10px;
