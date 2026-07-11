@@ -65,7 +65,7 @@
     <div class="linha-controles">
       <button id="btn-cancelar-selecao" class="botao-secundario">Cancelar</button>
       <button id="btn-desassociar-selecao" class="botao-secundario">Desassociar</button>
-      <button id="btn-atribuir-selecao" class="botao-primario">Atribuir a mim</button>
+      <button id="btn-atribuir-selecao" class="botao-primario">☑️ Atribuir a...</button>
     </div>
   </div>
 
@@ -105,6 +105,7 @@
     </div>
 
     <div class="ficha-secao ficha-acoes">
+      <button id="btn-atribuir-outro" class="botao-secundario">👥 Atribuir a outro</button>
       <button id="btn-repassar" class="botao-secundario">🔄 Repassar</button>
       <button id="btn-etiqueta" class="botao-secundario">🏷️ Etiqueta de endereço</button>
       <button id="btn-carta-recusa" class="botao-secundario oculto">✉️ Carta de recusa</button>
@@ -137,6 +138,15 @@
     <p>Escolha para quem repassar:</p>
     <div id="lista-repasse-destinos" class="lista-botoes-grandes"></div>
     <button class="botao-link" data-fechar="modal-repasse">Cancelar</button>
+  </div>
+</section>
+
+<!-- ===================== MODAL: ESCOLHER ENTREVISTADOR (genérico) ===================== -->
+<section id="modal-escolher-entrevistador" class="tela tela-modal oculto">
+  <div class="caixa-modal">
+    <h3 id="titulo-escolher-entrevistador">Atribuir a quem?</h3>
+    <div id="lista-escolher-entrevistador" class="lista-botoes-grandes"></div>
+    <button class="botao-link" data-fechar="modal-escolher-entrevistador">Cancelar</button>
   </div>
 </section>
 
@@ -229,6 +239,26 @@
   </div>
 </section>
 
+<!-- ===================== TELA: DISTRIBUIR DOMICÍLIOS DO SETOR ===================== -->
+<section id="tela-distribuir-setor" class="tela tela-sheet oculto">
+  <header class="barra-topo">
+    <button class="botao-icone" data-fechar="tela-distribuir-setor" aria-label="Fechar">✕</button>
+    <div>Distribuir domicílios do setor</div>
+  </header>
+  <div class="conteudo-scroll">
+    <p class="texto-ajuda">
+      Depois de combinar com a equipe quem fica com quais domicílios, marque as atribuições
+      no mapa (pino → "Atribuir a outro") e gere aqui a mensagem única pro grupo do WhatsApp.
+    </p>
+    <label class="rotulo-campo" for="distribuir-filtro-setor">Setor</label>
+    <select id="distribuir-filtro-setor"></select>
+    <div id="distribuir-resumo"></div>
+    <div class="linha-controles">
+      <button id="btn-gerar-mensagem-distribuicao" class="botao-primario">📤 Gerar mensagem para o grupo</button>
+    </div>
+  </div>
+</section>
+
 <!-- ===================== TELA: ETIQUETAS EM LOTE ===================== -->
 <section id="tela-etiquetas-lote" class="tela tela-sheet oculto">
   <header class="barra-topo">
@@ -286,6 +316,7 @@
     <h3>Menu</h3>
     <div class="usuario-atual">Usuário: <strong id="menu-usuario-atual"></strong></div>
     <button class="item-menu" id="btn-abrir-meus-associados">📍 Meus domicílios associados</button>
+    <button class="item-menu" id="btn-abrir-distribuir-setor">👥 Distribuir domicílios do setor</button>
     <button class="item-menu" id="btn-abrir-resumo-associacoes">📤 Enviar minhas associações</button>
     <button class="item-menu" id="btn-etiquetas-lote">🏷️ Gerar etiquetas em lote</button>
     <button class="item-menu" id="btn-exportar-backup">⬇️ Exportar backup</button>
