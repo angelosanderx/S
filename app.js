@@ -8,7 +8,7 @@
 
 // Mantida em sincronia manual com CACHE_VERSION em sw.js — só pra exibir no menu
 // e conferir facilmente se o celular já pegou a última atualização.
-const VERSAO_APP = 'v14';
+const VERSAO_APP = 'v15';
 
 const CHAVE_ESTADO = 'pns2026_estado_v1';
 
@@ -549,6 +549,7 @@ function popupDomicilio(d) {
     ${est.cartaRecusaSolicitadaEm ? `<div class="popup-contato popup-alerta-carta">✉️ Carta de recusa solicitada em ${new Date(est.cartaRecusaSolicitadaEm).toLocaleDateString('pt-BR')}</div>` : ''}
     <div class="popup-mini-roteiro">${linhasRoteiro}</div>
     <div class="popup-botoes">
+      <button class="botao-primario" onclick="atribuirOuRemoverDoMapa('${d.id}')">${est.atribuido ? '✕ Remover atribuição' : '☑️ Atribuir a mim'}</button>
       <button class="botao-secundario" onclick="mapaLeaflet.closePopup(); abrirFicha('${d.id}')">📋 Roteiro completo</button>
       <button class="botao-secundario" onclick="solicitarCartaDoMapa('${d.id}')">✉️ Carta de recusa</button>
       ${est.cartaRecusaSolicitadaEm ? `<button class="botao-secundario" onclick="excluirSolicitacaoCarta('${d.id}')">🗑️ Excluir solicitação de carta</button>` : ''}
@@ -957,9 +958,9 @@ function gerarCodigo(letra, setor, numDomicilio) {
   return `${letra}${setor.slice(-4)}/${numDomicilio ?? '?'}`;
 }
 
-function atribuirOuRemover() {
-  const d = domiciliosPorId[fichaAtualId];
-  const est = estadoDomicilio(fichaAtualId);
+function alternarAtribuicao(id) {
+  const d = domiciliosPorId[id];
+  const est = estadoDomicilio(id);
   if (est.atribuido) {
     est.atribuido = false;
     est.codigo = null;
@@ -974,8 +975,23 @@ function atribuirOuRemover() {
   }
   est.atualizadoEm = agora();
   salvarEstado();
+}
+
+function atribuirOuRemover() {
+  alternarAtribuicao(fichaAtualId);
   abrirFicha(fichaAtualId);
   aplicarFiltros();
+}
+
+function atribuirOuRemoverDoMapa(id) {
+  alternarAtribuicao(id);
+  aplicarFiltros();
+  const d = domiciliosPorId[id];
+  const marcador = marcadoresPorId[id];
+  L.popup({ maxWidth: 280, autoPanPadding: [20, 80] })
+    .setLatLng(marcador ? marcador.getLatLng() : [d.lat, d.lng])
+    .setContent(popupDomicilio(d))
+    .openOn(mapaLeaflet);
 }
 
 function onMudarStatus() {
