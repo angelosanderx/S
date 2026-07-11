@@ -262,10 +262,15 @@
     <button class="item-menu" id="btn-etiquetas-lote">🏷️ Gerar etiquetas em lote</button>
     <button class="item-menu" id="btn-exportar-backup">⬇️ Exportar backup</button>
     <button class="item-menu" id="btn-importar-backup">⬆️ Importar backup</button>
-    <input type="file" id="input-importar-backup" accept="application/json" class="oculto">
+    <input type="file" id="input-importar-backup" accept="application/json,.json,text/plain,*/*" class="oculto">
     <div id="status-dados-pessoais" class="texto-ajuda">Dados pessoais: —</div>
     <button class="item-menu" id="btn-importar-dados-pessoais">🔐 Importar dados pessoais</button>
-    <input type="file" id="input-dados-pessoais" accept="application/json" class="oculto">
+    <p class="texto-ajuda">
+      Recebeu o arquivo pelo WhatsApp? Se não aparecer em "Recentes" ao importar,
+      procure em Arquivos → Almacenamento interno → WhatsApp → Media → WhatsApp
+      Documents (Android) ou salve em "Arquivos" antes de importar (iPhone).
+    </p>
+    <input type="file" id="input-dados-pessoais" accept="application/json,.json,text/plain,*/*" class="oculto">
     <div id="status-mapa-offline" class="texto-ajuda">Mapa offline: —</div>
     <button class="item-menu" id="btn-baixar-tiles">🗺️ Baixar mapa offline (área visível)</button>
     <button class="item-menu" id="btn-limpar-mapa-offline">🗑️ Limpar mapa offline</button>
