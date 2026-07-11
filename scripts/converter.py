@@ -31,6 +31,10 @@ DADOS_FONTE = REPO_ROOT / "dados-fonte"
 COMBINADO_XLSX = DADOS_FONTE / "selecionado e completo.xlsx"
 SELECIONADOS_XLSX = DADOS_FONTE / "selecionados.xlsx"
 COMPLETO_XLSX = DADOS_FONTE / "completo.xlsx"
+# UPA (Unidade Primária de Amostragem) = 15 domicílios selecionados, podendo abranger
+# mais de um setor censitário. Planilha "UPA"/"Setor" (1a aba), sem cabeçalho fixo além
+# dessas duas colunas — ver especificacao-app-campo.md.
+UPAS_XLSX = DADOS_FONTE / "upas.xlsx"
 MALHA_SHP = DADOS_FONTE / "RJ_setores_CD2022" / "RJ_setores_CD2022.shp"
 OUT_DADOS_JS = REPO_ROOT / "app" / "dados.js"
 OUT_RELATORIO = REPO_ROOT / "relatorio-conversao.txt"
@@ -351,6 +355,41 @@ def hull_com_buffer(pontos_lonlat):
     return buffered
 
 
+def carregar_upas_por_setor(relatorio: Relatorio) -> dict[str, str]:
+    """Lê UPAS_XLSX (colunas "UPA" e "Setor") e retorna {setor: upa}.
+
+    Uma UPA pode abranger mais de um setor (os 15 domicílios selecionados da UPA
+    ficam espalhados entre eles) — usado no app pra reunir os setores de uma UPA
+    ao filtrar/associar/enviar.
+    """
+    if not UPAS_XLSX.exists():
+        relatorio.aviso(
+            f"{UPAS_XLSX.name} não encontrado — setores ficarão sem UPA "
+            f"(agrupamento de 15 domicílios por UPA desativado)."
+        )
+        return {}
+
+    wb = openpyxl.load_workbook(UPAS_XLSX, read_only=True, data_only=True)
+    ws = wb[wb.sheetnames[0]]
+    upas_por_setor: dict[str, str] = {}
+    for linha in ws.iter_rows(min_row=2, values_only=True):
+        if not linha or linha[0] is None or linha[1] is None:
+            continue
+        upa, setor = str(linha[0]).strip(), str(linha[1]).strip()
+        anterior = upas_por_setor.get(setor)
+        if anterior and anterior != upa:
+            relatorio.aviso(
+                f"Setor {setor} aparece com mais de uma UPA em {UPAS_XLSX.name} "
+                f"({anterior} e {upa}) — mantendo {anterior}."
+            )
+            continue
+        upas_por_setor[setor] = upa
+
+    n_upas = len(set(upas_por_setor.values()))
+    relatorio.info(f"UPAs carregadas: {n_upas} UPAs cobrindo {len(upas_por_setor)} setores.")
+    return upas_por_setor
+
+
 def carregar_malha_ibge(setores_alvo: set, relatorio: Relatorio):
     """Retorna (aneis_por_setor, municipio_por_setor) a partir da malha do IBGE.
 
@@ -442,6 +481,10 @@ def main():
 
     setores_codigos = set(roteiro_por_setor.keys()) | {d["setor"] for d in domicilios}
     malha, municipio_por_setor = carregar_malha_ibge(setores_codigos, relatorio)
+    upas_por_setor = carregar_upas_por_setor(relatorio)
+    sem_upa = sorted(setores_codigos - upas_por_setor.keys())
+    if sem_upa:
+        relatorio.aviso(f"Setores sem UPA mapeada em {UPAS_XLSX.name}: {', '.join(sem_upa)}")
 
     setores = []
     n_oficial = n_aproximado = 0
@@ -464,6 +507,7 @@ def main():
         }
         setores.append({
             "controle": codigo,
+            "upa": upas_por_setor.get(codigo),
             "nomeZona": zonas_por_setor.get(codigo),
             "municipio": municipio_por_setor.get(codigo),
             "aproximado": aproximado,

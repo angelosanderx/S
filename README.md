@@ -28,6 +28,11 @@ pip3 install --user openpyxl pyshp
 As planilhas (`selecionados.xlsx`, `completo.xlsx` ou o arquivo combinado
 `selecionado e completo.xlsx`) devem estar em `dados-fonte/`.
 
+`dados-fonte/upas.xlsx` (colunas "UPA" e "Setor", 1ª aba) mapeia cada setor à sua UPA
+(Unidade Primária de Amostragem) — uma UPA sempre tem 15 domicílios selecionados, que
+podem estar espalhados entre mais de um setor. Sem esse arquivo o conversor roda normal,
+só que cada setor vira uma UPA sozinho (sem agrupar irmãos).
+
 A malha de setores censitários do IBGE (2022, shapefile do RJ) também precisa estar
 em `dados-fonte/RJ_setores_CD2022/` — baixe uma vez com:
 
