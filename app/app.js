@@ -8,7 +8,7 @@
 
 // Mantida em sincronia manual com CACHE_VERSION em sw.js — só pra exibir no menu
 // e conferir facilmente se o celular já pegou a última atualização.
-const VERSAO_APP = 'v24';
+const VERSAO_APP = 'v25';
 
 const CHAVE_ESTADO = 'pns2026_estado_v1';
 
@@ -600,12 +600,12 @@ function popupDomicilio(d) {
     <div class="popup-contato">Status: ${statusLabel}</div>
     ${est.atribuido && est.repassadoPara ? `<div class="popup-contato popup-alerta-carta">🔄 Repassado de ${dono} para ${est.repassadoPara} (ainda não assumido)</div>` : ''}
     ${est.cartaRecusaSolicitadaEm ? `<div class="popup-contato popup-alerta-carta">✉️ Carta de recusa solicitada em ${new Date(est.cartaRecusaSolicitadaEm).toLocaleDateString('pt-BR')}</div>` : ''}
+    <button class="botao-secundario popup-botao-roteiro" onclick="mapaLeaflet.closePopup(); abrirFicha('${d.id}')">📋 Roteiro completo</button>
     <div class="popup-mini-roteiro">${linhasRoteiro}</div>
     <div class="popup-botoes">
       <button class="botao-primario" onclick="atribuirOuRemoverDoMapa('${d.id}')">${textoBotaoAtribuir}</button>
       <button class="botao-secundario" onclick="abrirEscolhaAtribuirOutroMapa('${d.id}')">👥 Atribuir a outro</button>
       ${est.atribuido ? `<button class="botao-secundario" onclick="abrirRepasseDoMapa('${d.id}')">🔄 Repassar</button>` : ''}
-      <button class="botao-secundario" onclick="mapaLeaflet.closePopup(); abrirFicha('${d.id}')">📋 Roteiro completo</button>
       <button class="botao-secundario" onclick="solicitarCartaDoMapa('${d.id}')">✉️ Carta de recusa</button>
       ${est.cartaRecusaSolicitadaEm ? `<button class="botao-secundario" onclick="excluirSolicitacaoCarta('${d.id}')">🗑️ Excluir solicitação de carta</button>` : ''}
       <button class="botao-secundario" onclick="mapaLeaflet.closePopup(); abrirModalStatus('${d.id}')">✅ Classificar status</button>
