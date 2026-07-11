@@ -2,7 +2,7 @@
 // Bump em CACHE_VERSION a cada deploy para invalidar o cache anterior.
 'use strict';
 
-const CACHE_VERSION = 'v8';
+const CACHE_VERSION = 'v9';
 const CACHE_SHELL = `pns2026-shell-${CACHE_VERSION}`;
 
 const ARQUIVOS_PRECACHE = [
@@ -28,7 +28,12 @@ const ARQUIVOS_PRECACHE = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_SHELL)
-      .then((cache) => cache.addAll(ARQUIVOS_PRECACHE))
+      .then((cache) => Promise.all(
+        // cache: 'reload' ignora o cache HTTP do navegador — sem isso, um app.js/dados.js
+        // ainda "fresco" (dentro do Cache-Control do GitHub Pages) podia ser reaproveitado
+        // aqui e a versão nova nunca chegava a ser pré-cacheada de verdade.
+        ARQUIVOS_PRECACHE.map((url) => fetch(url, { cache: 'reload' }).then((resp) => cache.put(url, resp)))
+      ))
       .then(() => self.skipWaiting())
   );
 });
