@@ -64,6 +64,7 @@
     <span id="contagem-selecao">0 selecionado(s)</span>
     <div class="linha-controles">
       <button id="btn-cancelar-selecao" class="botao-secundario">Cancelar</button>
+      <button id="btn-desassociar-selecao" class="botao-secundario">Desassociar</button>
       <button id="btn-atribuir-selecao" class="botao-primario">Atribuir a mim</button>
     </div>
   </div>
@@ -267,11 +268,24 @@
   </div>
 </section>
 
+<!-- ===================== TELA: MEUS DOMICÍLIOS ASSOCIADOS ===================== -->
+<section id="tela-meus-associados" class="tela tela-sheet oculto">
+  <header class="barra-topo">
+    <button class="botao-icone" data-fechar="tela-meus-associados" aria-label="Fechar">✕</button>
+    <div>Meus domicílios associados</div>
+  </header>
+  <div class="conteudo-scroll">
+    <p id="meus-associados-contagem" class="texto-ajuda"></p>
+    <div id="meus-associados-lista"></div>
+  </div>
+</section>
+
 <!-- ===================== MENU / CONFIGURAÇÕES ===================== -->
 <section id="menu-lateral" class="tela tela-menu oculto">
   <div class="caixa-menu">
     <h3>Menu</h3>
     <div class="usuario-atual">Usuário: <strong id="menu-usuario-atual"></strong></div>
+    <button class="item-menu" id="btn-abrir-meus-associados">📍 Meus domicílios associados</button>
     <button class="item-menu" id="btn-abrir-resumo-associacoes">📤 Enviar minhas associações</button>
     <button class="item-menu" id="btn-etiquetas-lote">🏷️ Gerar etiquetas em lote</button>
     <button class="item-menu" id="btn-exportar-backup">⬇️ Exportar backup</button>
