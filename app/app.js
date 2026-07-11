@@ -8,7 +8,7 @@
 
 // Mantida em sincronia manual com CACHE_VERSION em sw.js — só pra exibir no menu
 // e conferir facilmente se o celular já pegou a última atualização.
-const VERSAO_APP = 'v21';
+const VERSAO_APP = 'v22';
 
 const CHAVE_ESTADO = 'pns2026_estado_v1';
 
@@ -925,7 +925,9 @@ function popularFiltroSetores() {
     const opt = document.createElement('option');
     opt.value = s.controle;
     const nome = nomeLocalidadeSetor(s);
-    opt.textContent = `Setor ${s.controle}${nome ? ' — ' + nome : ''}`;
+    const irmaos = setoresDaUpaDe(s.controle).length - 1;
+    const sufixoUpa = irmaos > 0 ? ` (UPA com +${irmaos} setor${irmaos > 1 ? 'es' : ''})` : '';
+    opt.textContent = `Setor ${s.controle}${nome ? ' — ' + nome : ''}${sufixoUpa}`;
     $('lote-filtro-setor').appendChild(opt);
   });
   renderListaFiltroSetor();
@@ -1402,30 +1404,37 @@ function gerarImpressaoEtiquetaIndividual() {
 }
 
 function abrirEtiquetasLote() {
+  if (filtroSetoresSelecionados.size === 1) {
+    $('lote-filtro-setor').value = [...filtroSetoresSelecionados][0];
+  }
   atualizarContagemLote();
   mostrar('tela-etiquetas-lote');
 }
 
 function domiciliosParaLote() {
   const setor = $('lote-filtro-setor').value;
-  return DADOS.domicilios.filter((d) => {
-    const est = estadoDomicilio(d.id);
-    if (donoDomicilio(est) !== estado.usuario) return false;
-    if (setor && d.setor !== setor) return false;
-    return true;
-  });
+  if (!setor) return [];
+  return domiciliosDaUpa(setor);
 }
 
 function atualizarContagemLote() {
-  const n = domiciliosParaLote().length;
-  $('lote-contagem').textContent = `${n} etiqueta(s) serão geradas.`;
+  const setor = $('lote-filtro-setor').value;
+  const lista = domiciliosParaLote();
+  const naoAtribuidos = lista.filter((d) => !donoDomicilio(estadoDomicilio(d.id))).length;
+  let texto = setor ? `${rotuloUpaDoSetor(setor)} — ${lista.length} etiqueta(s) serão geradas` : `${lista.length} etiqueta(s) serão geradas`;
+  if (naoAtribuidos > 0) texto += ` (${naoAtribuidos} ainda não atribuído(s) a ninguém)`;
+  $('lote-contagem').textContent = texto + '.';
 }
 
 function gerarImpressaoLote() {
   const lista = domiciliosParaLote();
   if (!lista.length) {
-    alert('Nenhum domicílio atribuído a você (com o filtro escolhido).');
+    alert('Selecione um setor com domicílios no roteiro.');
     return;
+  }
+  const naoAtribuidos = lista.filter((d) => !donoDomicilio(estadoDomicilio(d.id))).length;
+  if (naoAtribuidos > 0) {
+    if (!confirm(`${naoAtribuidos} de ${lista.length} domicílio(s) ainda não foram atribuídos a ninguém. Gerar as etiquetas mesmo assim?`)) return;
   }
   const porPagina = LOTE_COLUNAS * LOTE_LINHAS;
   let html = '';
