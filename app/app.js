@@ -126,6 +126,24 @@ function entrevistadores() {
 const domiciliosPorId = Object.fromEntries(DADOS.domicilios.map((d) => [d.id, d]));
 const setoresPorControle = Object.fromEntries(DADOS.setores.map((s) => [s.controle, s]));
 
+// Bairro/localidade mais frequente entre os domicílios de cada setor — usado como
+// rótulo no mapa quando o setor não tem "nomeZona" preenchido na planilha de origem.
+const bairroPorSetor = (() => {
+  const contagem = {};
+  DADOS.domicilios.forEach((d) => {
+    const bairro = (d.bairro || '').trim();
+    if (!bairro) return;
+    (contagem[d.setor] || (contagem[d.setor] = {}));
+    contagem[d.setor][bairro] = (contagem[d.setor][bairro] || 0) + 1;
+  });
+  const resultado = {};
+  Object.keys(contagem).forEach((setor) => {
+    const [maisFrequente] = Object.entries(contagem[setor]).sort((a, b) => b[1] - a[1]);
+    resultado[setor] = maisFrequente[0];
+  });
+  return resultado;
+})();
+
 // ---------------------------------------------------------------------
 // Dados pessoais (nome/telefone) — NÃO vêm em dados.js (que pode ser publicado
 // publicamente). Ficam num arquivo à parte, importado uma vez por aqui e
@@ -280,7 +298,7 @@ async function initMapa() {
   camadaSetores = L.layerGroup().addTo(mapaLeaflet);
   DADOS.setores.forEach((setor) => {
     if (!setor.geojson || !setor.geojson.coordinates || !setor.geojson.coordinates.length) return;
-    L.geoJSON(setor.geojson, {
+    const camadaPoligono = L.geoJSON(setor.geojson, {
       style: {
         color: '#334155',
         weight: 1.5,
@@ -288,6 +306,15 @@ async function initMapa() {
         dashArray: setor.aproximado ? '6,4' : null,
       },
     }).addTo(camadaSetores);
+
+    const nomeLocalidade = setor.nomeZona || bairroPorSetor[setor.controle];
+    if (nomeLocalidade) {
+      camadaPoligono.bindTooltip(paraTituloProprio(nomeLocalidade), {
+        permanent: true,
+        direction: 'center',
+        className: 'rotulo-bairro',
+      });
+    }
   });
 
   camadaDeclutter = L.layerGroup().addTo(mapaLeaflet);

@@ -352,6 +352,20 @@ textarea { resize: vertical; }
 .etiqueta-preview .et-nome { font-weight: 700; }
 .etiqueta-preview .et-cod { display: block; margin-top: 6px; font-size: 11px; color: #64748b; }
 
+.rotulo-bairro {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #475569;
+  text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 4px #fff;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.rotulo-bairro::before { display: none; }
+
 /* ---------- Marcadores no mapa ---------- */
 .pino-domicilio {
   border-radius: 50%;
