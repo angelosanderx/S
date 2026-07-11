@@ -8,7 +8,7 @@
 
 // Mantida em sincronia manual com CACHE_VERSION em sw.js — só pra exibir no menu
 // e conferir facilmente se o celular já pegou a última atualização.
-const VERSAO_APP = 'v17';
+const VERSAO_APP = 'v18';
 
 const CHAVE_ESTADO = 'pns2026_estado_v1';
 
@@ -1456,79 +1456,6 @@ function salvarNovoEntrevistador() {
 }
 
 // ---------------------------------------------------------------------
-// Enviar associações ao supervisor (WhatsApp)
-// ---------------------------------------------------------------------
-
-function domiciliosParaSupervisor(incluirEnviados) {
-  return DADOS.domicilios.filter((d) => {
-    const est = estadoDomicilio(d.id);
-    return donoDomicilio(est) === estado.usuario && (incluirEnviados || !est.enviadoSupervisorEm);
-  });
-}
-
-function agruparPorSetor(lista) {
-  const grupos = {};
-  lista.forEach((d) => {
-    (grupos[d.setor] = grupos[d.setor] || []).push(d.numDomicilio);
-  });
-  Object.values(grupos).forEach((nums) => nums.sort((a, b) => a - b));
-  return grupos;
-}
-
-function montarMensagemAssociacoes(grupos) {
-  const setores = Object.keys(grupos).sort();
-  const linhas = setores.map((s) => `Setor ${s}: dom. ${grupos[s].join(', ')}`);
-  const totalDom = setores.reduce((acc, s) => acc + grupos[s].length, 0);
-  return `📤 ASSOCIAÇÕES — PNS 2026
-Entrevistador: ${estado.usuario}
-Data: ${new Date().toLocaleDateString('pt-BR')}
-
-${linhas.join('\n')}
-
-Total: ${totalDom} domicílio(s) em ${setores.length} setor(es)`;
-}
-
-function abrirResumoAssociacoes() {
-  $('chk-incluir-enviados').checked = false;
-  renderResumoAssociacoes();
-  mostrar('tela-resumo-associacoes');
-}
-
-function renderResumoAssociacoes() {
-  const incluirEnviados = $('chk-incluir-enviados').checked;
-  const lista = domiciliosParaSupervisor(incluirEnviados);
-  const grupos = agruparPorSetor(lista);
-  const setores = Object.keys(grupos).sort();
-  const cont = $('resumo-associacoes-lista');
-  if (!setores.length) {
-    cont.innerHTML = `<p class="vazio">${incluirEnviados
-      ? 'Nenhum domicílio atribuído a você no momento.'
-      : 'Nenhuma associação nova para enviar. Marque "Incluir já enviados" para reenviar tudo (ex.: se a mensagem anterior se perdeu).'}</p>`;
-    $('btn-enviar-associacoes').disabled = true;
-  } else {
-    cont.innerHTML = setores.map((s) => `
-      <div class="setor-resumo">
-        <strong>Setor ${s.slice(-4)}</strong>
-        <div class="texto-ajuda">${grupos[s].length} domicílio(s): dom. ${grupos[s].join(', ')}</div>
-      </div>`).join('');
-    $('btn-enviar-associacoes').disabled = false;
-  }
-}
-
-function enviarAssociacoesSupervisor() {
-  const incluirEnviados = $('chk-incluir-enviados').checked;
-  const lista = domiciliosParaSupervisor(incluirEnviados);
-  if (!lista.length) return;
-  const grupos = agruparPorSetor(lista);
-  const texto = montarMensagemAssociacoes(grupos);
-  const carimbo = agora();
-  lista.forEach((d) => { estadoDomicilio(d.id).enviadoSupervisorEm = carimbo; });
-  salvarEstado();
-  esconder('tela-resumo-associacoes');
-  compartilharOuCopiar(texto);
-}
-
-// ---------------------------------------------------------------------
 // Distribuir domicílios do setor entre a equipe (mensagem única pro grupo)
 // ---------------------------------------------------------------------
 
@@ -1929,13 +1856,10 @@ function wireEventosGlobais() {
   $('btn-gerar-etiqueta').addEventListener('click', gerarImpressaoEtiquetaIndividual);
   $('btn-imprimir-etiquetas').addEventListener('click', imprimirEtiquetas);
 
-  $('btn-abrir-resumo-associacoes').addEventListener('click', () => { esconder('menu-lateral'); abrirResumoAssociacoes(); });
   $('btn-abrir-meus-associados').addEventListener('click', () => { esconder('menu-lateral'); abrirMeusAssociados(); });
   $('btn-abrir-distribuir-setor').addEventListener('click', () => { esconder('menu-lateral'); abrirDistribuirSetor(); });
   $('distribuir-filtro-setor').addEventListener('change', renderDistribuirSetor);
   $('btn-gerar-mensagem-distribuicao').addEventListener('click', gerarMensagemDistribuicao);
-  $('chk-incluir-enviados').addEventListener('change', renderResumoAssociacoes);
-  $('btn-enviar-associacoes').addEventListener('click', enviarAssociacoesSupervisor);
 
   $('btn-etiquetas-lote').addEventListener('click', () => { esconder('menu-lateral'); abrirEtiquetasLote(); });
   $('lote-filtro-setor').addEventListener('change', atualizarContagemLote);
