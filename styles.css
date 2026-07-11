@@ -344,6 +344,7 @@ textarea { resize: vertical; }
   font-size: 16px;
   cursor: pointer;
 }
+.item-menu-perigo { color: var(--cor-erro); }
 .usuario-atual { margin-bottom: 12px; color: #475569; }
 .texto-ajuda { font-size: 13px; color: #64748b; }
 .texto-erro { color: var(--cor-erro); font-size: 14px; margin: 6px 0; }
