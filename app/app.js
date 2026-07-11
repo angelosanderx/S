@@ -8,7 +8,7 @@
 
 // Mantida em sincronia manual com CACHE_VERSION em sw.js — só pra exibir no menu
 // e conferir facilmente se o celular já pegou a última atualização.
-const VERSAO_APP = 'v15';
+const VERSAO_APP = 'v16';
 
 const CHAVE_ESTADO = 'pns2026_estado_v1';
 
@@ -105,6 +105,7 @@ function estadoDomicilio(id) {
   if (!estado.domicilios[id]) {
     estado.domicilios[id] = {
       atribuido: false,
+      atribuidoPara: null,
       codigo: null,
       status: STATUS_PADRAO,
       statusOutro: null,
@@ -117,6 +118,13 @@ function estadoDomicilio(id) {
     };
   }
   return estado.domicilios[id];
+}
+
+// Quem o domicílio está atribuído — cai para o usuário atual em registros
+// salvos antes do campo atribuidoPara existir (só tinham o booleano atribuido).
+function donoDomicilio(est) {
+  if (!est.atribuido) return null;
+  return est.atribuidoPara || estado.usuario;
 }
 
 function entrevistadores() {
@@ -232,6 +240,7 @@ function iniciar() {
   carregarDadosPessoais();
   renderListaEntrevistadores();
   popularFiltroSetores();
+  popularFiltroDistribuir();
   popularSelectStatus();
   popularLegenda();
   atualizarStatusDadosPessoais();
@@ -379,7 +388,7 @@ function corDoEntrevistador(nome) {
 }
 
 function corDoPino(domicilio, est) {
-  return est.atribuido ? corDoEntrevistador(estado.usuario) : corDoStatus(est.status);
+  return est.atribuido ? corDoEntrevistador(donoDomicilio(est)) : corDoStatus(est.status);
 }
 
 function iconePino(domicilio, est) {
@@ -414,7 +423,7 @@ function renderMarcadores() {
     const est = estadoDomicilio(d.id);
     if (filtroSetoresSelecionados.size && !filtroSetoresSelecionados.has(d.setor)) return;
     if (filtroStatus && est.status !== filtroStatus) return;
-    if (filtroSoMeusAtivo && !est.atribuido) return;
+    if (filtroSoMeusAtivo && donoDomicilio(est) !== estado.usuario) return;
     if (d.lat == null || d.lng == null) return;
 
     const marcador = L.marker([d.lat, d.lng], { icon: iconePino(d, est) });
@@ -540,6 +549,13 @@ function popupDomicilio(d) {
     ? (STATUS_POR_CHAVE[est.status] || {}).label + (est.status === 'outros' && est.statusOutro ? `: ${est.statusOutro}` : '')
     : 'Sem classificação';
 
+  const dono = donoDomicilio(est);
+  const textoBotaoAtribuir = !est.atribuido
+    ? '☑️ Atribuir a mim'
+    : dono === estado.usuario
+      ? '✕ Remover minha atribuição'
+      : `✕ Remover atribuição de ${dono}`;
+
   return `<div class="popup-pino">
     ${est.codigo ? `<b>${est.codigo}</b>` : ''}
     <b>${d.logradouro || ''}, ${d.numero || 'S/N'}</b>${d.complemento ? ' — ' + d.complemento : ''}<br>
@@ -549,7 +565,8 @@ function popupDomicilio(d) {
     ${est.cartaRecusaSolicitadaEm ? `<div class="popup-contato popup-alerta-carta">✉️ Carta de recusa solicitada em ${new Date(est.cartaRecusaSolicitadaEm).toLocaleDateString('pt-BR')}</div>` : ''}
     <div class="popup-mini-roteiro">${linhasRoteiro}</div>
     <div class="popup-botoes">
-      <button class="botao-primario" onclick="atribuirOuRemoverDoMapa('${d.id}')">${est.atribuido ? '✕ Remover atribuição' : '☑️ Atribuir a mim'}</button>
+      <button class="botao-primario" onclick="atribuirOuRemoverDoMapa('${d.id}')">${textoBotaoAtribuir}</button>
+      <button class="botao-secundario" onclick="abrirEscolhaAtribuirOutroMapa('${d.id}')">👥 Atribuir a outro</button>
       <button class="botao-secundario" onclick="mapaLeaflet.closePopup(); abrirFicha('${d.id}')">📋 Roteiro completo</button>
       <button class="botao-secundario" onclick="solicitarCartaDoMapa('${d.id}')">✉️ Carta de recusa</button>
       ${est.cartaRecusaSolicitadaEm ? `<button class="botao-secundario" onclick="excluirSolicitacaoCarta('${d.id}')">🗑️ Excluir solicitação de carta</button>` : ''}
@@ -693,7 +710,7 @@ function abrirListaSetor() {
 }
 
 function atualizarContador() {
-  const meus = DADOS.domicilios.filter((d) => estadoDomicilio(d.id).atribuido);
+  const meus = DADOS.domicilios.filter((d) => donoDomicilio(estadoDomicilio(d.id)) === estado.usuario);
   const realizados = meus.filter((d) => estadoDomicilio(d.id).status === 'realizado');
   $('contador-realizados').textContent = `${realizados.length} de ${meus.length} realizados`;
 }
@@ -734,37 +751,73 @@ function cancelarSelecao() {
   renderMarcadores();
 }
 
-function atribuirSelecionados() {
-  if (!domiciliosSelecionados.size) return;
-  const entrevistador = entrevistadores().find((e) => e.nome === estado.usuario);
-  const n = domiciliosSelecionados.size;
-  domiciliosSelecionados.forEach((id) => {
-    const d = domiciliosPorId[id];
-    const est = estadoDomicilio(id);
-    est.atribuido = true;
-    est.status = STATUS_PADRAO;
-    est.repassadoPara = null;
-    est.enviadoSupervisorEm = null;
-    est.cartaRecusaSolicitadaEm = null;
-    est.codigo = gerarCodigo(entrevistador.letra, d.setor, d.numDomicilio);
-    est.atualizadoEm = agora();
+// Atribui (ou remove) um domicílio — usado tanto pra "atribuir a mim" quanto
+// pra atribuir a qualquer outro entrevistador do grupo (ex.: distribuir os
+// domicílios de um setor entre os 4 entrevistadores depois de combinarem
+// quem fica com o quê).
+function atribuirA(id, nome) {
+  const d = domiciliosPorId[id];
+  const est = estadoDomicilio(id);
+  const entrevistador = entrevistadores().find((e) => e.nome === nome);
+  if (!entrevistador) return;
+  est.atribuido = true;
+  est.atribuidoPara = nome;
+  est.status = STATUS_PADRAO;
+  est.repassadoPara = null;
+  est.enviadoSupervisorEm = null;
+  est.cartaRecusaSolicitadaEm = null;
+  est.codigo = gerarCodigo(entrevistador.letra, d.setor, d.numDomicilio);
+  est.atualizadoEm = agora();
+}
+
+function removerAtribuicao(id) {
+  const est = estadoDomicilio(id);
+  est.atribuido = false;
+  est.atribuidoPara = null;
+  est.codigo = null;
+  est.atualizadoEm = agora();
+}
+
+function alternarAtribuicao(id) {
+  if (estadoDomicilio(id).atribuido) removerAtribuicao(id);
+  else atribuirA(id, estado.usuario);
+}
+
+function abrirEscolherEntrevistador(titulo, { incluirEuMesmo = true } = {}, callback) {
+  $('titulo-escolher-entrevistador').textContent = titulo;
+  const cont = $('lista-escolher-entrevistador');
+  cont.innerHTML = '';
+  const lista = incluirEuMesmo ? entrevistadores() : entrevistadores().filter((e) => e.nome !== estado.usuario);
+  lista.forEach((e) => {
+    const btn = document.createElement('button');
+    btn.className = 'botao-grande';
+    btn.textContent = e.nome === estado.usuario ? `${e.nome} (eu)` : e.nome;
+    btn.addEventListener('click', () => {
+      esconder('modal-escolher-entrevistador');
+      callback(e.nome);
+    });
+    cont.appendChild(btn);
   });
-  salvarEstado();
-  cancelarSelecao();
-  aplicarFiltros();
-  alert(`${n} domicílio(s) atribuído(s) a você.`);
+  mostrar('modal-escolher-entrevistador');
+}
+
+function abrirEscolhaAtribuirSelecionados() {
+  if (!domiciliosSelecionados.size) return;
+  abrirEscolherEntrevistador('Atribuir selecionados a quem?', { incluirEuMesmo: true }, (nome) => {
+    const n = domiciliosSelecionados.size;
+    domiciliosSelecionados.forEach((id) => atribuirA(id, nome));
+    salvarEstado();
+    cancelarSelecao();
+    aplicarFiltros();
+    alert(`${n} domicílio(s) atribuído(s) a ${nome}.`);
+  });
 }
 
 function desassociarSelecionados() {
   if (!domiciliosSelecionados.size) return;
   const n = domiciliosSelecionados.size;
   if (!confirm(`Desassociar ${n} domicílio(s) selecionado(s)?`)) return;
-  domiciliosSelecionados.forEach((id) => {
-    const est = estadoDomicilio(id);
-    est.atribuido = false;
-    est.codigo = null;
-    est.atualizadoEm = agora();
-  });
+  domiciliosSelecionados.forEach((id) => removerAtribuicao(id));
   salvarEstado();
   cancelarSelecao();
   aplicarFiltros();
@@ -782,7 +835,7 @@ function abrirMeusAssociados() {
 
 function renderMeusAssociados() {
   const lista = DADOS.domicilios
-    .filter((d) => estadoDomicilio(d.id).atribuido)
+    .filter((d) => donoDomicilio(estadoDomicilio(d.id)) === estado.usuario)
     .sort((a, b) => a.setor.localeCompare(b.setor) || (a.numDomicilio || 0) - (b.numDomicilio || 0));
 
   $('meus-associados-contagem').textContent = lista.length
@@ -826,10 +879,7 @@ function renderMeusAssociados() {
 }
 
 function desassociarUm(id) {
-  const est = estadoDomicilio(id);
-  est.atribuido = false;
-  est.codigo = null;
-  est.atualizadoEm = agora();
+  removerAtribuicao(id);
   salvarEstado();
   renderMeusAssociados();
   aplicarFiltros();
@@ -913,7 +963,12 @@ function abrirFicha(id) {
   if (telefoneFicha) contato.push(`Tel.: ${telefoneFicha}`);
   $('ficha-contato').textContent = contato.join(' · ');
 
-  $('btn-atribuir').textContent = est.atribuido ? 'Remover atribuição' : 'Atribuir a mim';
+  const donoFicha = donoDomicilio(est);
+  $('btn-atribuir').textContent = !est.atribuido
+    ? 'Atribuir a mim'
+    : donoFicha === estado.usuario
+      ? 'Remover minha atribuição'
+      : `Remover atribuição de ${donoFicha}`;
   $('select-status').value = est.status || '';
   $('campo-status-outro').classList.toggle('oculto', est.status !== 'outros');
   $('campo-status-outro').value = est.statusOutro || '';
@@ -921,8 +976,8 @@ function abrirFicha(id) {
 
   $('btn-carta-recusa').classList.toggle('oculto', est.status !== 'recusa');
   $('btn-excluir-carta-recusa').classList.toggle('oculto', !est.cartaRecusaSolicitadaEm);
-  $('btn-etiqueta').disabled = !est.atribuido;
-  $('btn-etiqueta').title = est.atribuido ? '' : 'Atribua o domicílio a você para gerar a etiqueta';
+  $('btn-etiqueta').disabled = donoFicha !== estado.usuario;
+  $('btn-etiqueta').title = donoFicha === estado.usuario ? '' : 'Atribua o domicílio a você para gerar a etiqueta';
 
   renderRoteiro(d);
   mostrar('ficha-domicilio');
@@ -958,25 +1013,6 @@ function gerarCodigo(letra, setor, numDomicilio) {
   return `${letra}${setor.slice(-4)}/${numDomicilio ?? '?'}`;
 }
 
-function alternarAtribuicao(id) {
-  const d = domiciliosPorId[id];
-  const est = estadoDomicilio(id);
-  if (est.atribuido) {
-    est.atribuido = false;
-    est.codigo = null;
-  } else {
-    const entrevistador = entrevistadores().find((e) => e.nome === estado.usuario);
-    est.atribuido = true;
-    est.status = STATUS_PADRAO;
-    est.repassadoPara = null;
-    est.enviadoSupervisorEm = null;
-    est.cartaRecusaSolicitadaEm = null;
-    est.codigo = gerarCodigo(entrevistador.letra, d.setor, d.numDomicilio);
-  }
-  est.atualizadoEm = agora();
-  salvarEstado();
-}
-
 function atribuirOuRemover() {
   alternarAtribuicao(fichaAtualId);
   abrirFicha(fichaAtualId);
@@ -986,12 +1022,35 @@ function atribuirOuRemover() {
 function atribuirOuRemoverDoMapa(id) {
   alternarAtribuicao(id);
   aplicarFiltros();
+  reabrirPopupDomicilio(id);
+}
+
+function reabrirPopupDomicilio(id) {
   const d = domiciliosPorId[id];
   const marcador = marcadoresPorId[id];
   L.popup({ maxWidth: 280, autoPanPadding: [20, 80] })
     .setLatLng(marcador ? marcador.getLatLng() : [d.lat, d.lng])
     .setContent(popupDomicilio(d))
     .openOn(mapaLeaflet);
+}
+
+function abrirEscolhaAtribuirOutroFicha() {
+  abrirEscolherEntrevistador('Atribuir a quem?', { incluirEuMesmo: false }, (nome) => {
+    atribuirA(fichaAtualId, nome);
+    salvarEstado();
+    abrirFicha(fichaAtualId);
+    aplicarFiltros();
+  });
+}
+
+function abrirEscolhaAtribuirOutroMapa(id) {
+  mapaLeaflet.closePopup();
+  abrirEscolherEntrevistador('Atribuir a quem?', { incluirEuMesmo: false }, (nome) => {
+    atribuirA(id, nome);
+    salvarEstado();
+    aplicarFiltros();
+    reabrirPopupDomicilio(id);
+  });
 }
 
 function onMudarStatus() {
@@ -1066,6 +1125,7 @@ function confirmarRepasse(destino) {
   est.statusOutro = null;
   est.repassadoPara = destino;
   est.atribuido = false;
+  est.atribuidoPara = null;
   est.codigo = null;
   est.atualizadoEm = agora();
   salvarEstado();
@@ -1316,7 +1376,7 @@ function domiciliosParaLote() {
   const setor = $('lote-filtro-setor').value;
   return DADOS.domicilios.filter((d) => {
     const est = estadoDomicilio(d.id);
-    if (!est.atribuido) return false;
+    if (donoDomicilio(est) !== estado.usuario) return false;
     if (setor && d.setor !== setor) return false;
     return true;
   });
@@ -1402,7 +1462,7 @@ function salvarNovoEntrevistador() {
 function domiciliosParaSupervisor(incluirEnviados) {
   return DADOS.domicilios.filter((d) => {
     const est = estadoDomicilio(d.id);
-    return est.atribuido && (incluirEnviados || !est.enviadoSupervisorEm);
+    return donoDomicilio(est) === estado.usuario && (incluirEnviados || !est.enviadoSupervisorEm);
   });
 }
 
@@ -1465,6 +1525,102 @@ function enviarAssociacoesSupervisor() {
   lista.forEach((d) => { estadoDomicilio(d.id).enviadoSupervisorEm = carimbo; });
   salvarEstado();
   esconder('tela-resumo-associacoes');
+  compartilharOuCopiar(texto);
+}
+
+// ---------------------------------------------------------------------
+// Distribuir domicílios do setor entre a equipe (mensagem única pro grupo)
+// ---------------------------------------------------------------------
+
+function popularFiltroDistribuir() {
+  const sel = $('distribuir-filtro-setor');
+  const setoresOrdenados = [...DADOS.setores].sort((a, b) => a.controle.localeCompare(b.controle));
+  setoresOrdenados.forEach((s) => {
+    const opt = document.createElement('option');
+    opt.value = s.controle;
+    const nome = nomeLocalidadeSetor(s);
+    opt.textContent = `Setor ${s.controle}${nome ? ' — ' + nome : ''}`;
+    sel.appendChild(opt);
+  });
+}
+
+function abrirDistribuirSetor() {
+  if (filtroSetoresSelecionados.size === 1) {
+    $('distribuir-filtro-setor').value = [...filtroSetoresSelecionados][0];
+  }
+  renderDistribuirSetor();
+  mostrar('tela-distribuir-setor');
+}
+
+function agruparPorEntrevistador(lista) {
+  const grupos = {};
+  lista.forEach((d) => {
+    const nome = donoDomicilio(estadoDomicilio(d.id)) || 'Não atribuído';
+    (grupos[nome] = grupos[nome] || []).push(d.numDomicilio);
+  });
+  Object.values(grupos).forEach((nums) => nums.sort((a, b) => a - b));
+  return grupos;
+}
+
+function ordenarNomesGrupos(grupos) {
+  return Object.keys(grupos).sort((a, b) => {
+    if (a === 'Não atribuído') return 1;
+    if (b === 'Não atribuído') return -1;
+    return a.localeCompare(b);
+  });
+}
+
+function renderDistribuirSetor() {
+  const setor = $('distribuir-filtro-setor').value;
+  const lista = domiciliosDoSetor(setor);
+  const cont = $('distribuir-resumo');
+  if (!lista.length) {
+    cont.innerHTML = '<p class="vazio">Esse setor não tem domicílios no roteiro.</p>';
+    return;
+  }
+  const grupos = agruparPorEntrevistador(lista);
+  const naoAtribuidos = (grupos['Não atribuído'] || []).length;
+  const atribuidos = lista.length - naoAtribuidos;
+
+  cont.innerHTML = `<p class="texto-ajuda">${atribuidos} de ${lista.length} domicílio(s) já atribuído(s)</p>` +
+    ordenarNomesGrupos(grupos).map((nome) => `
+      <div class="setor-resumo">
+        <strong>${nome}</strong>
+        <div class="texto-ajuda">${grupos[nome].length} domicílio(s): dom. ${grupos[nome].join(', ')}</div>
+      </div>`).join('');
+}
+
+function montarMensagemDistribuicao(setor, grupos, nomesOrdenados) {
+  const s = setoresPorControle[setor];
+  const nomeLoc = s ? nomeLocalidadeSetor(s) : '';
+  const linhas = nomesOrdenados.map((nome) => `${nome}: dom. ${grupos[nome].join(', ')} (${grupos[nome].length})`);
+  const total = Object.values(grupos).reduce((acc, arr) => acc + arr.length, 0);
+  return `👥 DISTRIBUIÇÃO DE DOMICÍLIOS — Setor ${setor}${nomeLoc ? ' (' + nomeLoc + ')' : ''}
+Data: ${new Date().toLocaleDateString('pt-BR')}
+
+${linhas.join('\n')}
+
+Total: ${total} domicílio(s)`;
+}
+
+function gerarMensagemDistribuicao() {
+  const setor = $('distribuir-filtro-setor').value;
+  if (!setor) return;
+  const lista = domiciliosDoSetor(setor);
+  if (!lista.length) {
+    alert('Esse setor não tem domicílios no roteiro.');
+    return;
+  }
+
+  const grupos = agruparPorEntrevistador(lista);
+  const naoAtribuidos = (grupos['Não atribuído'] || []).length;
+  if (naoAtribuidos > 0) {
+    const atribuidos = lista.length - naoAtribuidos;
+    if (!confirm(`O setor ${setor} tem ${lista.length} domicílios, mas só ${atribuidos} foram atribuídos. Deseja enviar mesmo assim só com esses ${atribuidos}?`)) return;
+  }
+
+  const texto = montarMensagemDistribuicao(setor, grupos, ordenarNomesGrupos(grupos));
+  esconder('tela-distribuir-setor');
   compartilharOuCopiar(texto);
 }
 
@@ -1719,7 +1875,7 @@ function wireEventosGlobais() {
   $('btn-localizar').addEventListener('click', () => mapaLeaflet && mapaLeaflet.locate({ setView: true, maxZoom: 17 }));
   $('btn-modo-selecao').addEventListener('click', alternarModoSelecao);
   $('btn-cancelar-selecao').addEventListener('click', cancelarSelecao);
-  $('btn-atribuir-selecao').addEventListener('click', atribuirSelecionados);
+  $('btn-atribuir-selecao').addEventListener('click', abrirEscolhaAtribuirSelecionados);
   $('btn-desassociar-selecao').addEventListener('click', desassociarSelecionados);
 
   $('btn-abrir-filtro-setor').addEventListener('click', () => {
@@ -1755,6 +1911,7 @@ function wireEventosGlobais() {
   });
 
   $('btn-atribuir').addEventListener('click', atribuirOuRemover);
+  $('btn-atribuir-outro').addEventListener('click', abrirEscolhaAtribuirOutroFicha);
   $('select-status').addEventListener('change', onMudarStatus);
   $('campo-status-outro').addEventListener('input', (e) => salvarStatusOutroDebounced(fichaAtualId, e.target.value));
   $('campo-obs').addEventListener('input', (e) => salvarObsDebounced(fichaAtualId, e.target.value));
@@ -1774,6 +1931,9 @@ function wireEventosGlobais() {
 
   $('btn-abrir-resumo-associacoes').addEventListener('click', () => { esconder('menu-lateral'); abrirResumoAssociacoes(); });
   $('btn-abrir-meus-associados').addEventListener('click', () => { esconder('menu-lateral'); abrirMeusAssociados(); });
+  $('btn-abrir-distribuir-setor').addEventListener('click', () => { esconder('menu-lateral'); abrirDistribuirSetor(); });
+  $('distribuir-filtro-setor').addEventListener('change', renderDistribuirSetor);
+  $('btn-gerar-mensagem-distribuicao').addEventListener('click', gerarMensagemDistribuicao);
   $('chk-incluir-enviados').addEventListener('change', renderResumoAssociacoes);
   $('btn-enviar-associacoes').addEventListener('click', enviarAssociacoesSupervisor);
 
