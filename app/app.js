@@ -8,7 +8,7 @@
 
 // Mantida em sincronia manual com CACHE_VERSION em sw.js — só pra exibir no menu
 // e conferir facilmente se o celular já pegou a última atualização.
-const VERSAO_APP = 'v19';
+const VERSAO_APP = 'v20';
 
 const CHAVE_ESTADO = 'pns2026_estado_v1';
 
@@ -350,6 +350,21 @@ async function initMapa() {
         className: 'rotulo-bairro',
       });
     }
+
+    const centro = camadaPoligono.getBounds().getCenter();
+    L.marker(centro, {
+      icon: L.divIcon({
+        className: '',
+        html: '<div class="botao-enviar-setor">📤</div>',
+        iconSize: [28, 28],
+        iconAnchor: [14, -8],
+      }),
+      interactive: true,
+      keyboard: false,
+      zIndexOffset: -200,
+    }).addTo(camadaSetores)
+      .bindTooltip('Enviar associações deste setor/UPA', { direction: 'top' })
+      .on('click', () => abrirDistribuirSetorParaSetor(setor.controle));
   });
 
   camadaDeclutter = L.layerGroup().addTo(mapaLeaflet);
@@ -1513,6 +1528,15 @@ function abrirDistribuirSetor() {
   if (filtroSetoresSelecionados.size === 1) {
     $('distribuir-filtro-setor').value = [...filtroSetoresSelecionados][0];
   }
+  renderDistribuirSetor();
+  mostrar('tela-distribuir-setor');
+}
+
+// Botão "📤" no meio de cada setor no mapa — atalho pra abrir direto o
+// envio de associações daquele setor/UPA, sem passar pelo menu.
+function abrirDistribuirSetorParaSetor(codigo) {
+  mapaLeaflet.closePopup();
+  $('distribuir-filtro-setor').value = codigo;
   renderDistribuirSetor();
   mostrar('tela-distribuir-setor');
 }
