@@ -8,7 +8,7 @@
 
 // Mantida em sincronia manual com CACHE_VERSION em sw.js — só pra exibir no menu
 // e conferir facilmente se o celular já pegou a última atualização.
-const VERSAO_APP = 'v20';
+const VERSAO_APP = 'v21';
 
 const CHAVE_ESTADO = 'pns2026_estado_v1';
 
@@ -1625,6 +1625,30 @@ function trocarUsuario() {
   mostrar('tela-identificacao');
 }
 
+function limparTodasAssociacoes() {
+  // estadoDomicilio() cria uma entrada "vazia" só de ler (ex.: ao renderizar os pinos do
+  // mapa) — contar só as que têm alguma alteração de verdade evita um aviso enganoso.
+  const n = Object.values(estado.domicilios).filter((est) => (
+    est.atribuido || est.status || est.obs || est.repassadoPara ||
+    est.cartaRecusaSolicitadaEm || est.enviadoSupervisorEm
+  )).length;
+  if (!n) {
+    alert('Não há nada pra limpar — nenhum domicílio tem status, atribuição ou observação salvos neste aparelho.');
+    return;
+  }
+  if (!confirm(
+    `Isso apaga TUDO que foi preenchido neste aparelho pra ${n} domicílio(s): atribuições, status, ` +
+    'observações, repasses e solicitações de carta de recusa. Não afeta outros aparelhos nem pode ser desfeito. ' +
+    'Recomendado: exporte um backup antes, se quiser guardar algo. Continuar?'
+  )) return;
+  if (!confirm('Tem certeza? Essa é a segunda e última confirmação — os dados serão apagados agora.')) return;
+  estado.domicilios = {};
+  salvarEstado();
+  esconder('menu-lateral');
+  if (mapaLeaflet) aplicarFiltros();
+  alert('Associações, status e observações apagados neste aparelho.');
+}
+
 // ---------------------------------------------------------------------
 // Backup
 // ---------------------------------------------------------------------
@@ -1943,6 +1967,7 @@ function wireEventosGlobais() {
   $('btn-limpar-mapa-offline').addEventListener('click', limparMapaOffline);
   $('btn-trocar-usuario').addEventListener('click', trocarUsuario);
   $('btn-verificar-atualizacao').addEventListener('click', verificarAtualizacaoApp);
+  $('btn-limpar-associacoes').addEventListener('click', limparTodasAssociacoes);
 }
 
 document.addEventListener('DOMContentLoaded', iniciar);
