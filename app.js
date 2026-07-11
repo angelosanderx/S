@@ -46,6 +46,9 @@ ID_CNEFE: ${d.id}
 ${obs ? 'Observação: ' + obs : ''}`;
 
 const COR_SELECAO = '#2563eb';
+const RAIO_DECLUTTER_PX = 26; // distância mínima (px) antes de dois pinos serem considerados sobrepostos
+const LIMITE_MARCADORES_DECLUTTER = 1500; // acima disso o mapa está zoom-out demais pra valer o custo
+const ZOOM_MINIMO_DECLUTTER = 18; // só afasta pinos em zoom bem próximo (nível de domicílio); no zoom normal fica como sempre foi
 const NOME_PADRAO_ETIQUETA = 'Sr(a) Morador(a)';
 const LOTE_COLUNAS = 2;
 const LOTE_LINHAS = 7; // folha A4, 2×7 = 14 etiquetas por página (igual ao campo.html)
@@ -232,7 +235,18 @@ async function entrarNoMapa() {
   if (!mapaLeaflet) await initMapa();
   atualizarContador();
   aplicarFiltros();
+  posicionarBotaoSoMeus();
 }
+
+function posicionarBotaoSoMeus() {
+  const filtros = $('barra-filtros');
+  const tela = $('tela-mapa');
+  const btn = $('btn-so-meus');
+  const offset = filtros.getBoundingClientRect().bottom - tela.getBoundingClientRect().top;
+  btn.style.top = `${offset + 10}px`;
+}
+
+window.addEventListener('resize', () => { if (mapaLeaflet) posicionarBotaoSoMeus(); });
 
 // ---------------------------------------------------------------------
 // Mapa
@@ -241,8 +255,12 @@ async function entrarNoMapa() {
 let mapaLeaflet = null;
 let camadaMarcadores = null;
 let camadaSetores = null;
+let camadaDeclutter = null;
 let marcadoresPorId = {};
 let modoSelecao = false;
+let filtroSoMeusAtivo = false;
+let marcadorLocalizacao = null;
+let circuloPrecisaoLocalizacao = null;
 const domiciliosSelecionados = new Set();
 
 async function initMapa() {
@@ -272,9 +290,39 @@ async function initMapa() {
     }).addTo(camadaSetores);
   });
 
+  camadaDeclutter = L.layerGroup().addTo(mapaLeaflet);
   camadaMarcadores = L.layerGroup().addTo(mapaLeaflet);
 
+  mapaLeaflet.on('zoomend', declutterMarcadores);
   mapaLeaflet.on('locationerror', () => alert('Não foi possível obter sua localização.'));
+  mapaLeaflet.on('locationfound', (e) => {
+    if (marcadorLocalizacao) {
+      marcadorLocalizacao.setLatLng(e.latlng);
+    } else {
+      marcadorLocalizacao = L.marker(e.latlng, {
+        icon: L.divIcon({
+          className: '',
+          html: '<div class="pino-minha-localizacao"></div>',
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+        }),
+        zIndexOffset: 1000,
+        interactive: false,
+      }).addTo(mapaLeaflet);
+    }
+    if (circuloPrecisaoLocalizacao) {
+      circuloPrecisaoLocalizacao.setLatLng(e.latlng).setRadius(e.accuracy);
+    } else {
+      circuloPrecisaoLocalizacao = L.circle(e.latlng, {
+        radius: e.accuracy,
+        color: '#2563eb',
+        weight: 1,
+        fillColor: '#2563eb',
+        fillOpacity: 0.08,
+        interactive: false,
+      }).addTo(mapaLeaflet);
+    }
+  });
 }
 
 function corDoStatus(chave) {
@@ -319,13 +367,12 @@ function renderMarcadores() {
 
   const filtroSetor = $('filtro-setor').value;
   const filtroStatus = $('filtro-status').value;
-  const soMeus = $('filtro-so-meus').checked;
 
   DADOS.domicilios.forEach((d) => {
     const est = estadoDomicilio(d.id);
     if (filtroSetor && d.setor !== filtroSetor) return;
     if (filtroStatus && est.status !== filtroStatus) return;
-    if (soMeus && !est.atribuido) return;
+    if (filtroSoMeusAtivo && !est.atribuido) return;
     if (d.lat == null || d.lng == null) return;
 
     const marcador = L.marker([d.lat, d.lng], { icon: iconePino(d, est) });
@@ -334,13 +381,97 @@ function renderMarcadores() {
         alternarSelecaoDomicilio(d.id);
       } else {
         L.popup({ maxWidth: 280, autoPanPadding: [20, 80] })
-          .setLatLng([d.lat, d.lng])
+          .setLatLng(marcador.getLatLng())
           .setContent(popupDomicilio(d))
           .openOn(mapaLeaflet);
       }
     });
     marcador.addTo(camadaMarcadores);
     marcadoresPorId[d.id] = marcador;
+  });
+
+  declutterMarcadores();
+}
+
+// Quando dois ou mais domicílios caem no mesmo pixel (ex.: apartamentos do mesmo prédio),
+// cravamos um pontinho fixo no local real e afastamos só os rótulos (os pinos numerados)
+// ao redor dele, ligados por uma linha fina — como o Google Earth faz. d.lat/d.lng nunca mudam.
+// Recalculado a cada zoom, já que a distância em pixels entre dois pontos muda com o zoom.
+function declutterMarcadores() {
+  camadaDeclutter.clearLayers();
+  const ids = Object.keys(marcadoresPorId);
+  if (!mapaLeaflet || ids.length === 0) return;
+
+  if (mapaLeaflet.getZoom() < ZOOM_MINIMO_DECLUTTER || ids.length > LIMITE_MARCADORES_DECLUTTER) {
+    ids.forEach((id) => {
+      const d = domiciliosPorId[id];
+      marcadoresPorId[id].setLatLng([d.lat, d.lng]);
+    });
+    return;
+  }
+
+  const pontos = ids.map((id) => {
+    const d = domiciliosPorId[id];
+    return { id, real: L.latLng(d.lat, d.lng), ponto: mapaLeaflet.latLngToContainerPoint([d.lat, d.lng]) };
+  });
+
+  const grade = new Map();
+  const chave = (x, y) => `${Math.round(x / RAIO_DECLUTTER_PX)}:${Math.round(y / RAIO_DECLUTTER_PX)}`;
+  pontos.forEach((p) => {
+    const k = chave(p.ponto.x, p.ponto.y);
+    if (!grade.has(k)) grade.set(k, []);
+    grade.get(k).push(p);
+  });
+
+  const visitados = new Set();
+  pontos.forEach((p) => {
+    if (visitados.has(p.id)) return;
+    const [gx, gy] = chave(p.ponto.x, p.ponto.y).split(':').map(Number);
+    const grupo = [];
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const vizinhos = grade.get(`${gx + dx}:${gy + dy}`) || [];
+        vizinhos.forEach((v) => {
+          if (visitados.has(v.id)) return;
+          const dist = Math.hypot(p.ponto.x - v.ponto.x, p.ponto.y - v.ponto.y);
+          if (dist <= RAIO_DECLUTTER_PX) grupo.push(v);
+        });
+      }
+    }
+    grupo.forEach((v) => visitados.add(v.id));
+
+    if (grupo.length === 1) {
+      marcadoresPorId[grupo[0].id].setLatLng(grupo[0].real);
+      return;
+    }
+
+    const cx = grupo.reduce((s, v) => s + v.ponto.x, 0) / grupo.length;
+    const cy = grupo.reduce((s, v) => s + v.ponto.y, 0) / grupo.length;
+    const ancoraPonto = L.point(cx, cy);
+    const ancoraLatLng = mapaLeaflet.containerPointToLatLng(ancoraPonto);
+
+    L.circleMarker(ancoraLatLng, {
+      radius: 4,
+      color: '#fff',
+      weight: 1.5,
+      fillColor: '#334155',
+      fillOpacity: 1,
+      interactive: false,
+    }).addTo(camadaDeclutter);
+
+    const raio = 26 + grupo.length * 4;
+    grupo.forEach((v, i) => {
+      const angulo = (2 * Math.PI * i) / grupo.length - Math.PI / 2;
+      const destino = L.point(cx + raio * Math.cos(angulo), cy + raio * Math.sin(angulo));
+      const destinoLatLng = mapaLeaflet.containerPointToLatLng(destino);
+      L.polyline([ancoraLatLng, destinoLatLng], {
+        color: '#334155',
+        weight: 1.5,
+        opacity: 0.8,
+        interactive: false,
+      }).addTo(camadaDeclutter);
+      marcadoresPorId[v.id].setLatLng(destinoLatLng);
+    });
   });
 }
 
@@ -1371,7 +1502,11 @@ function wireEventosGlobais() {
   $('filtro-setor').addEventListener('change', onMudarFiltroSetor);
   $('btn-lista-setor').addEventListener('click', abrirListaSetor);
   $('filtro-status').addEventListener('change', aplicarFiltros);
-  $('filtro-so-meus').addEventListener('change', aplicarFiltros);
+  $('btn-so-meus').addEventListener('click', () => {
+    filtroSoMeusAtivo = !filtroSoMeusAtivo;
+    $('btn-so-meus').classList.toggle('ativo', filtroSoMeusAtivo);
+    aplicarFiltros();
+  });
 
   $('btn-atribuir').addEventListener('click', atribuirOuRemover);
   $('select-status').addEventListener('change', onMudarStatus);
