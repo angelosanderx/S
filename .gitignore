@@ -1,0 +1,14 @@
+# Dados pessoais (nome/telefone) e planilhas originais — NUNCA publicar.
+# Distribuir dados-pessoais.json só por canal privado (ver README seção 5).
+dados-fonte/dados-pessoais.json
+dados-fonte/*.xlsx
+dados-fonte/RJ_setores_CD2022.zip
+# Malha completa do RJ (~135MB) — baixar de novo localmente quando precisar
+# reprocessar (ver README seção 1); os 43 setores já usados ficam extraídos
+# e simplificados em app/dados.js, não precisam do arquivo original no repo.
+dados-fonte/RJ_setores_CD2022/
+
+# Relatório de conversão (dados locais, não precisa ir pro repositório)
+relatorio-conversao.txt
+
+.DS_Store
