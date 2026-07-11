@@ -8,7 +8,7 @@
 
 // Mantida em sincronia manual com CACHE_VERSION em sw.js — só pra exibir no menu
 // e conferir facilmente se o celular já pegou a última atualização.
-const VERSAO_APP = 'v18';
+const VERSAO_APP = 'v19';
 
 const CHAVE_ESTADO = 'pns2026_estado_v1';
 
@@ -158,6 +158,16 @@ const bairroPorSetor = (() => {
 
 function nomeLocalidadeSetor(setor) {
   return paraTituloProprio(setor.nomeZona || bairroPorSetor[setor.controle] || '');
+}
+
+// Códigos dos setores que formam a mesma UPA (Unidade Primária de Amostragem) de
+// um dado setor — a UPA tem sempre 15 domicílios selecionados, que podem estar
+// espalhados entre mais de um setor. Setores sem "upa" mapeada (dados antigos,
+// sem a planilha de UPAs) contam como uma UPA só com eles mesmos.
+function setoresDaUpaDe(codigoSetor) {
+  const s = setoresPorControle[codigoSetor];
+  if (!s || !s.upa) return [codigoSetor];
+  return DADOS.setores.filter((outro) => outro.upa === s.upa).map((outro) => outro.controle);
 }
 
 // ---------------------------------------------------------------------
@@ -641,8 +651,17 @@ function centralizarNoFiltroSetor() {
 }
 
 function alternarSetorFiltro(codigo, marcado) {
-  if (marcado) filtroSetoresSelecionados.add(codigo);
-  else filtroSetoresSelecionados.delete(codigo);
+  if (marcado) {
+    filtroSetoresSelecionados.add(codigo);
+    const irmaos = setoresDaUpaDe(codigo).filter((c) => c !== codigo && !filtroSetoresSelecionados.has(c));
+    if (irmaos.length) {
+      irmaos.forEach((c) => filtroSetoresSelecionados.add(c));
+      renderListaFiltroSetor($('busca-filtro-setor').value);
+      alert(`O setor ${codigo} faz parte da mesma UPA (Unidade Primária de Amostragem) que ${irmaos.join(', ')} — os 15 domicílios da UPA ficam espalhados entre eles, então foram selecionados juntos.`);
+    }
+  } else {
+    filtroSetoresSelecionados.delete(codigo);
+  }
   aplicarFiltros();
 }
 
@@ -1466,9 +1485,28 @@ function popularFiltroDistribuir() {
     const opt = document.createElement('option');
     opt.value = s.controle;
     const nome = nomeLocalidadeSetor(s);
-    opt.textContent = `Setor ${s.controle}${nome ? ' — ' + nome : ''}`;
+    const irmaos = setoresDaUpaDe(s.controle).length - 1;
+    const sufixoUpa = irmaos > 0 ? ` (UPA com +${irmaos} setor${irmaos > 1 ? 'es' : ''})` : '';
+    opt.textContent = `Setor ${s.controle}${nome ? ' — ' + nome : ''}${sufixoUpa}`;
     sel.appendChild(opt);
   });
+}
+
+function rotuloUpaDoSetor(setor) {
+  const setores = setoresDaUpaDe(setor);
+  if (setores.length === 1) {
+    const s = setoresPorControle[setor];
+    const nome = s ? nomeLocalidadeSetor(s) : '';
+    return `Setor ${setor}${nome ? ' — ' + nome : ''}`;
+  }
+  return `UPA (setores ${setores.join(', ')})`;
+}
+
+function domiciliosDaUpa(setor) {
+  const setores = setoresDaUpaDe(setor);
+  return DADOS.domicilios
+    .filter((d) => setores.includes(d.setor))
+    .sort((a, b) => (a.numDomicilio || 0) - (b.numDomicilio || 0));
 }
 
 function abrirDistribuirSetor() {
@@ -1499,17 +1537,18 @@ function ordenarNomesGrupos(grupos) {
 
 function renderDistribuirSetor() {
   const setor = $('distribuir-filtro-setor').value;
-  const lista = domiciliosDoSetor(setor);
+  const lista = domiciliosDaUpa(setor);
   const cont = $('distribuir-resumo');
   if (!lista.length) {
-    cont.innerHTML = '<p class="vazio">Esse setor não tem domicílios no roteiro.</p>';
+    cont.innerHTML = '<p class="vazio">Essa UPA não tem domicílios no roteiro.</p>';
     return;
   }
   const grupos = agruparPorEntrevistador(lista);
   const naoAtribuidos = (grupos['Não atribuído'] || []).length;
   const atribuidos = lista.length - naoAtribuidos;
 
-  cont.innerHTML = `<p class="texto-ajuda">${atribuidos} de ${lista.length} domicílio(s) já atribuído(s)</p>` +
+  cont.innerHTML = `<p class="texto-ajuda"><strong>${rotuloUpaDoSetor(setor)}</strong></p>` +
+    `<p class="texto-ajuda">${atribuidos} de ${lista.length} domicílio(s) já atribuído(s)</p>` +
     ordenarNomesGrupos(grupos).map((nome) => `
       <div class="setor-resumo">
         <strong>${nome}</strong>
@@ -1518,11 +1557,9 @@ function renderDistribuirSetor() {
 }
 
 function montarMensagemDistribuicao(setor, grupos, nomesOrdenados) {
-  const s = setoresPorControle[setor];
-  const nomeLoc = s ? nomeLocalidadeSetor(s) : '';
   const linhas = nomesOrdenados.map((nome) => `${nome}: dom. ${grupos[nome].join(', ')} (${grupos[nome].length})`);
   const total = Object.values(grupos).reduce((acc, arr) => acc + arr.length, 0);
-  return `👥 DISTRIBUIÇÃO DE DOMICÍLIOS — Setor ${setor}${nomeLoc ? ' (' + nomeLoc + ')' : ''}
+  return `👥 DISTRIBUIÇÃO DE DOMICÍLIOS — ${rotuloUpaDoSetor(setor)}
 Data: ${new Date().toLocaleDateString('pt-BR')}
 
 ${linhas.join('\n')}
@@ -1533,9 +1570,9 @@ Total: ${total} domicílio(s)`;
 function gerarMensagemDistribuicao() {
   const setor = $('distribuir-filtro-setor').value;
   if (!setor) return;
-  const lista = domiciliosDoSetor(setor);
+  const lista = domiciliosDaUpa(setor);
   if (!lista.length) {
-    alert('Esse setor não tem domicílios no roteiro.');
+    alert('Essa UPA não tem domicílios no roteiro.');
     return;
   }
 
@@ -1543,7 +1580,7 @@ function gerarMensagemDistribuicao() {
   const naoAtribuidos = (grupos['Não atribuído'] || []).length;
   if (naoAtribuidos > 0) {
     const atribuidos = lista.length - naoAtribuidos;
-    if (!confirm(`O setor ${setor} tem ${lista.length} domicílios, mas só ${atribuidos} foram atribuídos. Deseja enviar mesmo assim só com esses ${atribuidos}?`)) return;
+    if (!confirm(`${rotuloUpaDoSetor(setor)} tem ${lista.length} domicílios, mas só ${atribuidos} foram atribuídos. Deseja enviar mesmo assim só com esses ${atribuidos}?`)) return;
   }
 
   const texto = montarMensagemDistribuicao(setor, grupos, ordenarNomesGrupos(grupos));

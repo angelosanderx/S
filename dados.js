@@ -2,7 +2,7 @@
 // SEM dados pessoais (nome/telefone) — este arquivo pode ser publicado
 // publicamente. Ver dados-fonte/dados-pessoais.json e seção 5 do README.
 const DADOS = {
- "geradoEm": "2026-07-10T23:43:08.337008-03:00",
+ "geradoEm": "2026-07-11T20:04:48.389329-03:00",
  "entrevistadores": [
   {
    "nome": "Maurício",
@@ -24,6 +24,7 @@ const DADOS = {
  "setores": [
   {
    "controle": "330100905060007",
+   "upa": "330100905060007",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -65,6 +66,7 @@ const DADOS = {
   },
   {
    "controle": "330100905060053",
+   "upa": "330100905060053",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -102,6 +104,7 @@ const DADOS = {
   },
   {
    "controle": "330100905060154",
+   "upa": "330100905060154",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -139,6 +142,7 @@ const DADOS = {
   },
   {
    "controle": "330100905060180",
+   "upa": "330100905060180",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -176,6 +180,7 @@ const DADOS = {
   },
   {
    "controle": "330100905060183",
+   "upa": "330100905060007",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -229,6 +234,7 @@ const DADOS = {
   },
   {
    "controle": "330100905060228",
+   "upa": "330100905060007",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -322,6 +328,7 @@ const DADOS = {
   },
   {
    "controle": "330100905060255",
+   "upa": "330100905060147",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -721,6 +728,7 @@ const DADOS = {
   },
   {
    "controle": "330100905060263",
+   "upa": "330100905060147",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -1896,6 +1904,7 @@ const DADOS = {
   },
   {
    "controle": "330100905070089",
+   "upa": "330100905070089",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -1929,6 +1938,7 @@ const DADOS = {
   },
   {
    "controle": "330100905070137",
+   "upa": "330100905070137",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -1966,6 +1976,7 @@ const DADOS = {
   },
   {
    "controle": "330100905070140",
+   "upa": "330100905070140",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -2019,6 +2030,7 @@ const DADOS = {
   },
   {
    "controle": "330100905070148",
+   "upa": "330100905070148",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -2060,6 +2072,7 @@ const DADOS = {
   },
   {
    "controle": "330100905070285",
+   "upa": "330100905070285",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -2115,6 +2128,7 @@ const DADOS = {
   },
   {
    "controle": "330100905070299",
+   "upa": "330100905070137",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -2156,6 +2170,7 @@ const DADOS = {
   },
   {
    "controle": "330100905080122",
+   "upa": "330100905080122",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -2213,6 +2228,7 @@ const DADOS = {
   },
   {
    "controle": "330100905080170",
+   "upa": "330100905080170",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -2254,6 +2270,7 @@ const DADOS = {
   },
   {
    "controle": "330100905080186",
+   "upa": "330100905080170",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -2291,6 +2308,7 @@ const DADOS = {
   },
   {
    "controle": "330100905080268",
+   "upa": "330100905080268",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -2328,6 +2346,7 @@ const DADOS = {
   },
   {
    "controle": "330100905080269",
+   "upa": "330100905080268",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -2365,6 +2384,7 @@ const DADOS = {
   },
   {
    "controle": "330100905080305",
+   "upa": "330100905080122",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -2438,6 +2458,7 @@ const DADOS = {
   },
   {
    "controle": "330100905080318",
+   "upa": "330100905080318",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -2499,6 +2520,7 @@ const DADOS = {
   },
   {
    "controle": "330100905080353",
+   "upa": "330100905080318",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -2532,6 +2554,7 @@ const DADOS = {
   },
   {
    "controle": "330100905090137",
+   "upa": "330100905090137",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -2573,6 +2596,7 @@ const DADOS = {
   },
   {
    "controle": "330100940000005",
+   "upa": "330100940000005",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -2858,6 +2882,7 @@ const DADOS = {
   },
   {
    "controle": "330100940000011",
+   "upa": "330100940000011",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -2951,6 +2976,7 @@ const DADOS = {
   },
   {
    "controle": "330100940000017",
+   "upa": "330100940000005",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -3208,6 +3234,7 @@ const DADOS = {
   },
   {
    "controle": "330100940000046",
+   "upa": "330100940000011",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -3245,6 +3272,7 @@ const DADOS = {
   },
   {
    "controle": "330100950000024",
+   "upa": "330100950000024",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -3358,6 +3386,7 @@ const DADOS = {
   },
   {
    "controle": "330100965000026",
+   "upa": "330100965000026",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -3427,6 +3456,7 @@ const DADOS = {
   },
   {
    "controle": "330100975000015",
+   "upa": "330100975000015",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -3604,6 +3634,7 @@ const DADOS = {
   },
   {
    "controle": "330100980000006",
+   "upa": "330100980000006",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -3641,6 +3672,7 @@ const DADOS = {
   },
   {
    "controle": "330100980000058",
+   "upa": "330100980000058",
    "nomeZona": null,
    "municipio": "Campos dos Goytacazes",
    "aproximado": false,
@@ -3674,6 +3706,7 @@ const DADOS = {
   },
   {
    "controle": "330205605000063",
+   "upa": "330205605000063",
    "nomeZona": null,
    "municipio": "Italva",
    "aproximado": false,
@@ -4623,6 +4656,7 @@ const DADOS = {
   },
   {
    "controle": "330475505000010",
+   "upa": "330475505000010",
    "nomeZona": null,
    "municipio": "São Francisco de Itabapoana",
    "aproximado": false,
@@ -4668,6 +4702,7 @@ const DADOS = {
   },
   {
    "controle": "330475505000088",
+   "upa": "330475505000010",
    "nomeZona": null,
    "municipio": "São Francisco de Itabapoana",
    "aproximado": false,
@@ -4713,6 +4748,7 @@ const DADOS = {
   },
   {
    "controle": "330475505000089",
+   "upa": "330475505000010",
    "nomeZona": null,
    "municipio": "São Francisco de Itabapoana",
    "aproximado": false,
@@ -4762,6 +4798,7 @@ const DADOS = {
   },
   {
    "controle": "330475510000002",
+   "upa": "330475510000002",
    "nomeZona": null,
    "municipio": "São Francisco de Itabapoana",
    "aproximado": false,
@@ -4831,6 +4868,7 @@ const DADOS = {
   },
   {
    "controle": "330475510000037",
+   "upa": "330475510000002",
    "nomeZona": null,
    "municipio": "São Francisco de Itabapoana",
    "aproximado": false,
@@ -4924,6 +4962,7 @@ const DADOS = {
   },
   {
    "controle": "330475510000039",
+   "upa": "330475510000002",
    "nomeZona": null,
    "municipio": "São Francisco de Itabapoana",
    "aproximado": false,
@@ -5001,6 +5040,7 @@ const DADOS = {
   },
   {
    "controle": "330475510000065",
+   "upa": "330475510000002",
    "nomeZona": null,
    "municipio": "São Francisco de Itabapoana",
    "aproximado": false,
@@ -5130,6 +5170,7 @@ const DADOS = {
   },
   {
    "controle": "330500030000016",
+   "upa": "330500030000016",
    "nomeZona": null,
    "municipio": "São João da Barra",
    "aproximado": false,
@@ -5323,6 +5364,7 @@ const DADOS = {
   },
   {
    "controle": "330500030000023",
+   "upa": "330500030000016",
    "nomeZona": null,
    "municipio": "São João da Barra",
    "aproximado": false,
@@ -5608,6 +5650,7 @@ const DADOS = {
   },
   {
    "controle": "330500030000026",
+   "upa": "330500030000016",
    "nomeZona": null,
    "municipio": "São João da Barra",
    "aproximado": false,
