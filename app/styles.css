@@ -104,17 +104,24 @@ h1, h2, h3 { margin: 0 0 8px; }
 
 .barra-filtros {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   padding: 8px 10px;
   background: var(--cor-superficie);
   border-bottom: 1px solid var(--cor-borda);
-  overflow-x: auto;
 }
 .barra-filtros select {
-  padding: 8px 10px;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 8px 6px;
   border-radius: 10px;
   border: 1px solid var(--cor-borda);
   background: #fff;
+  font-size: 14px;
+}
+.barra-filtros .chip-toggle {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  font-size: 14px;
 }
 .chip-toggle {
   display: flex;
@@ -166,6 +173,16 @@ h1, h2, h3 { margin: 0 0 8px; }
   white-space: nowrap;
 }
 .botao-pill-flutuante.ativo { background: var(--cor-primaria-escura); }
+.botao-pill-topo { top: 132px; right: 16px; bottom: auto; }
+
+.pino-minha-localizacao {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #2563eb;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 4px rgba(37,99,235,.35), 0 2px 6px rgba(0,0,0,.35);
+}
 
 .barra-selecao {
   position: absolute;
