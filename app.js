@@ -8,7 +8,7 @@
 
 // Mantida em sincronia manual com CACHE_VERSION em sw.js — só pra exibir no menu
 // e conferir facilmente se o celular já pegou a última atualização.
-const VERSAO_APP = 'v12';
+const VERSAO_APP = 'v13';
 
 const CHAVE_ESTADO = 'pns2026_estado_v1';
 
