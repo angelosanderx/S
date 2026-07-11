@@ -6,6 +6,10 @@
 // Constantes fáceis de ajustar
 // ---------------------------------------------------------------------
 
+// Mantida em sincronia manual com CACHE_VERSION em sw.js — só pra exibir no menu
+// e conferir facilmente se o celular já pegou a última atualização.
+const VERSAO_APP = 'v9';
+
 const CHAVE_ESTADO = 'pns2026_estado_v1';
 
 const STATUS_LIST = [
@@ -221,6 +225,7 @@ function iniciar() {
   popularSelectStatus();
   popularLegenda();
   atualizarStatusDadosPessoais();
+  $('status-versao-app').textContent = `Versão do app: ${VERSAO_APP}`;
   wireEventosGlobais();
 
   if (estado.usuario) {
@@ -1501,10 +1506,35 @@ async function atualizarStatusMapaOffline() {
 // Service worker
 // ---------------------------------------------------------------------
 
+let registroSW = null;
+
 function registrarServiceWorker() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch((e) => console.error('Falha ao registrar SW', e));
-  }
+  if (!('serviceWorker' in navigator)) return;
+
+  navigator.serviceWorker.register('sw.js').then((registro) => {
+    registroSW = registro;
+    // Reabrir o app (ícone na tela inicial) não garante que o navegador foi checar
+    // se existe um sw.js novo no servidor — força essa checagem sempre que o app volta a ficar visível.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') registro.update().catch(() => {});
+    });
+  }).catch((e) => console.error('Falha ao registrar SW', e));
+
+  // O sw.js usa skipWaiting()+clients.claim(), então assim que uma versão nova é
+  // instalada ela assume o controle sozinha — só falta recarregar a página pra
+  // ela passar a usar o HTML/JS/CSS novos em vez dos que já estavam na memória.
+  let recarregando = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (recarregando) return;
+    recarregando = true;
+    window.location.reload();
+  });
+}
+
+function verificarAtualizacaoApp() {
+  if (!registroSW) return;
+  registroSW.update().catch(() => {});
+  alert('Verificando atualização... se houver uma versão nova, o app recarrega sozinho em instantes.');
 }
 
 // ---------------------------------------------------------------------
@@ -1577,6 +1607,7 @@ function wireEventosGlobais() {
   $('btn-baixar-tiles').addEventListener('click', baixarMapaOffline);
   $('btn-limpar-mapa-offline').addEventListener('click', limparMapaOffline);
   $('btn-trocar-usuario').addEventListener('click', trocarUsuario);
+  $('btn-verificar-atualizacao').addEventListener('click', verificarAtualizacaoApp);
 }
 
 document.addEventListener('DOMContentLoaded', iniciar);
