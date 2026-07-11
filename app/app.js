@@ -8,7 +8,7 @@
 
 // Mantida em sincronia manual com CACHE_VERSION em sw.js — só pra exibir no menu
 // e conferir facilmente se o celular já pegou a última atualização.
-const VERSAO_APP = 'v16';
+const VERSAO_APP = 'v17';
 
 const CHAVE_ESTADO = 'pns2026_estado_v1';
 
@@ -52,7 +52,7 @@ ${obs ? 'Observação: ' + obs : ''}`;
 const COR_SELECAO = '#2563eb';
 const RAIO_DECLUTTER_PX = 26; // distância mínima (px) antes de dois pinos serem considerados sobrepostos
 const LIMITE_MARCADORES_DECLUTTER = 1500; // acima disso o mapa está zoom-out demais pra valer o custo
-const ZOOM_MINIMO_DECLUTTER = 18; // só afasta pinos em zoom bem próximo (nível de domicílio); no zoom normal fica como sempre foi
+const ZOOM_MINIMO_DECLUTTER = 17; // = maxZoom do "ir para o setor", pra já vir separado ao filtrar um setor pra fazer atribuições
 const NOME_PADRAO_ETIQUETA = 'Sr(a) Morador(a)';
 const LOTE_COLUNAS = 2;
 const LOTE_LINHAS = 7; // folha A4, 2×7 = 14 etiquetas por página (igual ao campo.html)
