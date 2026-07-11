@@ -8,7 +8,7 @@
 
 // Mantida em sincronia manual com CACHE_VERSION em sw.js — só pra exibir no menu
 // e conferir facilmente se o celular já pegou a última atualização.
-const VERSAO_APP = 'v22';
+const VERSAO_APP = 'v23';
 
 const CHAVE_ESTADO = 'pns2026_estado_v1';
 
@@ -416,8 +416,19 @@ function corDoPino(domicilio, est) {
   return est.atribuido ? corDoEntrevistador(donoDomicilio(est)) : corDoStatus(est.status);
 }
 
+// Domicílio atribuído e repassado ao mesmo tempo (repasse ainda não assumido pelo
+// destino) — pino meio a meio com a cor de quem tem hoje e de pra quem foi repassado.
+function fundoPino(domicilio, est) {
+  if (est.atribuido && est.repassadoPara) {
+    const corOrigem = corDoEntrevistador(donoDomicilio(est));
+    const corDestino = corDoEntrevistador(est.repassadoPara);
+    return `linear-gradient(90deg, ${corOrigem} 50%, ${corDestino} 50%)`;
+  }
+  return corDoPino(domicilio, est);
+}
+
 function iconePino(domicilio, est) {
-  const cor = corDoPino(domicilio, est);
+  const fundo = fundoPino(domicilio, est);
   const tamanho = 32;
   const fonte = 11;
   const estiloBorda = est.repassadoPara ? 'dashed' : 'solid';
@@ -430,7 +441,7 @@ function iconePino(domicilio, est) {
   const marcaSelecao = domiciliosSelecionados.has(domicilio.id) ? '<div class="pino-selecionado">✓</div>' : '';
   return L.divIcon({
     className: '',
-    html: `<div class="pino-domicilio" style="width:${tamanho}px;height:${tamanho}px;background:${cor};` +
+    html: `<div class="pino-domicilio" style="width:${tamanho}px;height:${tamanho}px;background:${fundo};` +
       `border:3px ${estiloBorda} ${corBorda};font-size:${fonte}px;opacity:${opacidade};${anelSelecao}">${numero}${check}${carta}${marcaSelecao}</div>`,
     iconSize: [tamanho, tamanho],
     iconAnchor: [tamanho / 2, tamanho / 2],
@@ -587,6 +598,7 @@ function popupDomicilio(d) {
     ${d.bairro || ''}
     ${contato.length ? `<div class="popup-contato">${contato.join(' · ')}</div>` : ''}
     <div class="popup-contato">Status: ${statusLabel}</div>
+    ${est.atribuido && est.repassadoPara ? `<div class="popup-contato popup-alerta-carta">🔄 Repassado de ${dono} para ${est.repassadoPara} (ainda não assumido)</div>` : ''}
     ${est.cartaRecusaSolicitadaEm ? `<div class="popup-contato popup-alerta-carta">✉️ Carta de recusa solicitada em ${new Date(est.cartaRecusaSolicitadaEm).toLocaleDateString('pt-BR')}</div>` : ''}
     <div class="popup-mini-roteiro">${linhasRoteiro}</div>
     <div class="popup-botoes">
@@ -952,13 +964,15 @@ function popularLegenda() {
   ul.innerHTML = '';
   const legendaExtra = [
     { label: 'Sem classificação', cor: COR_SEM_STATUS },
-    { label: 'Repassado', cor: COR_SEM_STATUS, tracejado: true },
   ];
   [...STATUS_LIST, ...legendaExtra].forEach((s) => {
     const li = document.createElement('li');
     li.innerHTML = `<span class="ponto-legenda" style="background:${s.cor};${s.tracejado ? 'border:2px dashed #334155;' : ''}"></span> ${s.label}`;
     ul.appendChild(li);
   });
+  const liRepasse = document.createElement('li');
+  liRepasse.innerHTML = `<span class="ponto-legenda" style="background:linear-gradient(90deg, ${COR_SEM_STATUS} 50%, #475569 50%);border:2px dashed #334155;"></span> Repassado (metade da cor de quem tem hoje, metade de pra quem foi)`;
+  ul.appendChild(liRepasse);
 
   const ulEntr = $('lista-legenda-entrevistadores');
   ulEntr.innerHTML = '';
@@ -989,6 +1003,7 @@ function abrirFicha(id) {
   const badges = [];
   if (d.antropometria) badges.push('Antropometria');
   if (d.biomarcador) badges.push('Biomarcador');
+  if (est.atribuido && est.repassadoPara) badges.push(`🔄 Repassado para ${est.repassadoPara}`);
   if (est.cartaRecusaSolicitadaEm) badges.push('✉️ Carta de recusa solicitada');
   $('ficha-badges').innerHTML = badges.map((b) => `<span class="badge">${b}</span>`).join('');
 
@@ -1157,12 +1172,10 @@ function abrirModalRepasse() {
 function confirmarRepasse(destino) {
   const d = domiciliosPorId[fichaAtualId];
   const est = estadoDomicilio(fichaAtualId);
-  est.status = STATUS_PADRAO;
-  est.statusOutro = null;
+  // Mantém a atribuição original — o pino mostra as duas cores (metade de cada
+  // entrevistador) até alguém assumir de vez com "Atribuir a mim"/"Atribuir a outro",
+  // que aí sim substitui e limpa o repasse.
   est.repassadoPara = destino;
-  est.atribuido = false;
-  est.atribuidoPara = null;
-  est.codigo = null;
   est.atualizadoEm = agora();
   salvarEstado();
   esconder('modal-repasse');
