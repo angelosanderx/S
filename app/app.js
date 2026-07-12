@@ -8,7 +8,7 @@
 
 // Mantida em sincronia manual com CACHE_VERSION em sw.js — só pra exibir no menu
 // e conferir facilmente se o celular já pegou a última atualização.
-const VERSAO_APP = 'v26';
+const VERSAO_APP = 'v27';
 
 const CHAVE_ESTADO = 'pns2026_estado_v1';
 
@@ -363,8 +363,8 @@ async function initMapa() {
       keyboard: false,
       zIndexOffset: -200,
     }).addTo(camadaSetores)
-      .bindTooltip('Enviar associações deste setor/UPA', { direction: 'top' })
-      .on('click', () => abrirDistribuirSetorParaSetor(setor.controle));
+      .bindTooltip('Associações/etiquetas deste setor/UPA', { direction: 'top' })
+      .on('click', (ev) => abrirMenuSetorNoMapa(setor.controle, ev.latlng));
   });
 
   camadaDeclutter = L.layerGroup().addTo(mapaLeaflet);
@@ -1572,13 +1572,32 @@ function abrirDistribuirSetor() {
   mostrar('tela-distribuir-setor');
 }
 
-// Botão "📤" no meio de cada setor no mapa — atalho pra abrir direto o
-// envio de associações daquele setor/UPA, sem passar pelo menu.
+// Botão "📤" no meio de cada setor no mapa — abre um mini menu com atalhos
+// pra esse setor/UPA (enviar associações ou gerar etiquetas), sem passar pelo menu.
+function abrirMenuSetorNoMapa(codigo, latlng) {
+  L.popup({ maxWidth: 240, autoPanPadding: [20, 80] })
+    .setLatLng(latlng)
+    .setContent(`
+      <div class="popup-botoes">
+        <button class="botao-secundario" onclick="abrirDistribuirSetorParaSetor('${codigo}')">📤 Enviar associações</button>
+        <button class="botao-secundario" onclick="abrirEtiquetasLotePorSetor('${codigo}')">🏷️ Gerar etiquetas</button>
+      </div>
+    `)
+    .openOn(mapaLeaflet);
+}
+
 function abrirDistribuirSetorParaSetor(codigo) {
   mapaLeaflet.closePopup();
   $('distribuir-filtro-setor').value = codigo;
   renderDistribuirSetor();
   mostrar('tela-distribuir-setor');
+}
+
+function abrirEtiquetasLotePorSetor(codigo) {
+  mapaLeaflet.closePopup();
+  $('lote-filtro-setor').value = codigo;
+  atualizarContagemLote();
+  mostrar('tela-etiquetas-lote');
 }
 
 function agruparPorEntrevistador(lista) {
