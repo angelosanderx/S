@@ -8,7 +8,7 @@
 
 // Mantida em sincronia manual com CACHE_VERSION em sw.js — só pra exibir no menu
 // e conferir facilmente se o celular já pegou a última atualização.
-const VERSAO_APP = 'v25';
+const VERSAO_APP = 'v26';
 
 const CHAVE_ESTADO = 'pns2026_estado_v1';
 
@@ -821,6 +821,10 @@ function removerAtribuicao(id) {
   const est = estadoDomicilio(id);
   est.atribuido = false;
   est.atribuidoPara = null;
+  // Repasse só faz sentido enquanto há um dono atual de transição — sem atribuição
+  // não sobra "de quem" repassar, então limpa também (senão o pino ficava com a
+  // borda tracejada de repassado sem nenhuma cor de entrevistador pra mostrar).
+  est.repassadoPara = null;
   est.codigo = null;
   est.atualizadoEm = agora();
 }
