@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">
 <title>App de Campo — PNS 2026</title>
 <meta name="theme-color" content="#2563eb">
 <link rel="manifest" href="manifest.json">
@@ -312,6 +312,10 @@
     <input type="file" id="input-dados-pessoais" accept="application/json,.json,text/plain,*/*" class="oculto">
     <div id="status-mapa-offline" class="texto-ajuda">Mapa offline: —</div>
     <button class="item-menu" id="btn-baixar-tiles">🗺️ Baixar mapa offline (área visível)</button>
+    <p class="texto-ajuda">
+      Navegue até cada área que quiser (um setor urbano, um rural etc.) e toque de novo —
+      cada download se soma aos anteriores e você escolhe o zoom de cada um.
+    </p>
     <button class="item-menu" id="btn-limpar-mapa-offline">🗑️ Limpar mapa offline</button>
     <div id="progresso-tiles" class="oculto">
       <progress id="barra-progresso-tiles" value="0" max="100"></progress>

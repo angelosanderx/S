@@ -206,16 +206,50 @@ function atualizarStatusDadosPessoais() {
 function importarDadosPessoais(arquivo) {
   const reader = new FileReader();
   reader.onload = () => {
+    let obj;
     try {
-      const obj = JSON.parse(reader.result);
-      dadosPessoais = obj;
-      localStorage.setItem(CHAVE_DADOS_PESSOAIS, JSON.stringify(obj));
-      atualizarStatusDadosPessoais();
-      if (mapaLeaflet) aplicarFiltros();
-      alert(`Dados pessoais importados: ${Object.keys(obj).length} registro(s).`);
+      obj = JSON.parse(reader.result);
     } catch (e) {
-      alert('Arquivo de dados pessoais inválido.');
+      alert('Arquivo de dados pessoais inválido: não é um JSON válido.');
+      return;
     }
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+      alert('Arquivo de dados pessoais inválido: formato inesperado (esperava um objeto {id: {morador, telefone}}).');
+      return;
+    }
+    const idsDoArquivo = Object.keys(obj);
+    const idsComFormatoOk = idsDoArquivo.filter((id) => {
+      const v = obj[id];
+      return v && typeof v === 'object' && ('morador' in v || 'telefone' in v);
+    });
+    if (idsDoArquivo.length === 0 || idsComFormatoOk.length === 0) {
+      alert('Arquivo de dados pessoais inválido: nenhum registro no formato esperado (morador/telefone).');
+      return;
+    }
+    const setoresCobertos = new Set();
+    let idsConhecidos = 0;
+    idsComFormatoOk.forEach((id) => {
+      const d = domiciliosPorId[id];
+      if (d) { idsConhecidos += 1; setoresCobertos.add(d.setor); }
+    });
+    const dataArquivo = arquivo.lastModified ? new Date(arquivo.lastModified).toLocaleDateString('pt-BR') : null;
+
+    let resumo = `${idsComFormatoOk.length} domicílio(s) no arquivo, ${idsConhecidos} correspondem ao roteiro carregado neste app`;
+    if (setoresCobertos.size > 0) resumo += ` (${setoresCobertos.size} setor(es))`;
+    resumo += '.';
+    if (dataArquivo) resumo += `\nArquivo modificado em: ${dataArquivo}.`;
+    if (idsConhecidos === 0) {
+      resumo += '\n\n⚠️ NENHUM registro corresponde aos domicílios deste roteiro — provavelmente é o arquivo errado.';
+    } else if (Object.keys(dadosPessoais).length > 0) {
+      resumo += '\n\nIsso vai SUBSTITUIR os dados pessoais já importados neste aparelho.';
+    }
+    if (!confirm(`${resumo}\n\nConfirmar importação?`)) return;
+
+    dadosPessoais = obj;
+    localStorage.setItem(CHAVE_DADOS_PESSOAIS, JSON.stringify(obj));
+    atualizarStatusDadosPessoais();
+    if (mapaLeaflet) aplicarFiltros();
+    alert(`Dados pessoais importados: ${idsComFormatoOk.length} registro(s).`);
   };
   reader.readAsText(arquivo);
 }
@@ -1418,6 +1452,7 @@ function atualizarPreviewEtiqueta() {
 }
 
 function abrirTelaImpressao(infoTexto) {
+  document.querySelectorAll('.tela-sheet').forEach((el) => el.classList.add('oculto'));
   $('impressao-etiquetas-info').textContent = infoTexto;
   mostrar('tela-impressao-etiquetas');
 }
@@ -1700,7 +1735,11 @@ function limparTodasAssociacoes() {
     'observações, repasses e solicitações de carta de recusa. Não afeta outros aparelhos nem pode ser desfeito. ' +
     'Recomendado: exporte um backup antes, se quiser guardar algo. Continuar?'
   )) return;
-  if (!confirm('Tem certeza? Essa é a segunda e última confirmação — os dados serão apagados agora.')) return;
+  const digitado = prompt(`Última confirmação: digite LIMPAR (em maiúsculas) para apagar os dados de ${n} domicílio(s) agora.`);
+  if (digitado !== 'LIMPAR') {
+    if (digitado !== null) alert('Texto não confere com "LIMPAR" — nada foi apagado.');
+    return;
+  }
   estado.domicilios = {};
   salvarEstado();
   esconder('menu-lateral');
@@ -1809,6 +1848,28 @@ function baixarMapaOffline() {
     return;
   }
 
+  // A área salva é sempre "o que está visível na tela" agora — pra baixar mais de
+  // uma área (ex.: um setor urbano e um rural), basta navegar até cada área e repetir
+  // o download: os blocos vão se somando no armazenamento (não substituem os já salvos).
+  const zoomAtual = mapaLeaflet.getZoom();
+  const zoomMaxPossivel = camadaTilesOffline.options.maxZoom; // limite do provedor de tiles
+  const sugestaoAnterior = controleSalvarTiles.options.maxZoom || zoomMaxPossivel;
+  const sugestao = Math.min(Math.max(sugestaoAnterior, zoomAtual), zoomMaxPossivel);
+  const resposta = prompt(
+    `Baixar a área visível do mapa, do zoom atual (${zoomAtual}) até qual nível de detalhe?\n` +
+    'Setor urbano: use um nível alto (ex.: 18) pra ver detalhe de rua. Setor rural/área grande: um nível ' +
+    'mais baixo (ex.: 15 ou 16) baixa bem menos dados.\n' +
+    `(mínimo ${zoomAtual}, máximo ${zoomMaxPossivel})`,
+    String(sugestao)
+  );
+  if (resposta === null) return;
+  const zoomEscolhido = parseInt(resposta, 10);
+  if (!Number.isFinite(zoomEscolhido) || zoomEscolhido < zoomAtual || zoomEscolhido > zoomMaxPossivel) {
+    alert(`Nível de zoom inválido. Use um número entre ${zoomAtual} e ${zoomMaxPossivel}.`);
+    return;
+  }
+  controleSalvarTiles.options.maxZoom = zoomEscolhido;
+
   const btn = $('btn-baixar-tiles');
   $('progresso-tiles').classList.remove('oculto');
   const barra = $('barra-progresso-tiles');
@@ -1848,7 +1909,10 @@ function baixarMapaOffline() {
   camadaTilesOffline.on('saveend', onSaveEnd);
 
   controleSalvarTiles.options.confirm = (status, ok) => {
-    if (confirm(`Baixar ${status.lengthToBeSaved} blocos do mapa (área visível na tela) para uso offline?`)) {
+    if (confirm(
+      `Baixar ${status.lengthToBeSaved} blocos do mapa (área visível na tela, zoom ${zoomAtual}–${zoomEscolhido}) ` +
+      'para uso offline? Isso se soma ao que já estiver salvo — não apaga áreas baixadas antes.'
+    )) {
       btn.disabled = true;
       texto.textContent = `Baixando mapa… 0/${status.lengthToBeSaved}`;
       ok();
