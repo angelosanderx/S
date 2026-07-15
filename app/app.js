@@ -2017,11 +2017,13 @@ function wireEventosGlobais() {
     renderListaFiltroSetor();
     mostrar('tela-filtro-setor');
   });
-  $('btn-fechar-filtro-setor').addEventListener('click', () => {
+  const fecharFiltroSetorEIrParaMapa = () => {
     esconder('tela-filtro-setor');
     $('busca-filtro-setor').value = '';
     centralizarNoFiltroSetor();
-  });
+  };
+  $('btn-fechar-filtro-setor').addEventListener('click', fecharFiltroSetorEIrParaMapa);
+  $('btn-ok-filtro-setor').addEventListener('click', fecharFiltroSetorEIrParaMapa);
   $('busca-filtro-setor').addEventListener('input', (e) => renderListaFiltroSetor(e.target.value));
   $('btn-marcar-todos-setores').addEventListener('click', () => {
     setoresFiltradosPorBusca($('busca-filtro-setor').value).forEach((s) => filtroSetoresSelecionados.add(s.controle));
