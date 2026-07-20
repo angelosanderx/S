@@ -185,6 +185,7 @@ h1, h2, h3 { margin: 0 0 8px; }
   z-index: 1100;
 }
 .botao-flutuante-esquerda { left: 12px; right: auto; }
+.botao-flutuante.ativo { background: var(--cor-primaria); color: #fff; }
 
 .botao-pill-flutuante {
   position: absolute;
@@ -309,12 +310,18 @@ textarea { resize: vertical; }
 }
 .botao-secundario:disabled { color: #94a3b8; cursor: not-allowed; }
 
+.cabecalho-roteiro { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.cabecalho-roteiro h3 { margin: 0; }
+.chip-toggle.ativo { background: var(--cor-primaria); color: #fff; border-color: var(--cor-primaria); }
+.chip-toggle:disabled { opacity: .5; cursor: not-allowed; }
+
 .lista-roteiro { display: flex; flex-direction: column; gap: 2px; max-height: 50vh; overflow-y: auto; border: 1px solid var(--cor-borda); border-radius: 10px; }
 .item-roteiro { padding: 10px 12px; border-bottom: 1px solid #eef2f7; font-size: 14px; }
 .item-roteiro:last-child { border-bottom: none; }
 .item-roteiro.eh-alvo-selecionado { background: #fef9c3; }
 .item-roteiro.eh-este-domicilio { background: #dbeafe; font-weight: 700; border-left: 4px solid var(--cor-primaria); }
 .item-roteiro small { display: block; color: #64748b; }
+.distancia-roteiro { display: inline-block; margin-top: 2px; font-size: 12px; color: var(--cor-primaria-escura); font-weight: 700; }
 .dom-numero {
   display: inline-block;
   font-weight: 700;
