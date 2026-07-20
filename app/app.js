@@ -8,7 +8,7 @@
 
 // Mantida em sincronia manual com CACHE_VERSION em sw.js — só pra exibir no menu
 // e conferir facilmente se o celular já pegou a última atualização.
-const VERSAO_APP = 'v27';
+const VERSAO_APP = 'v28';
 
 const CHAVE_ESTADO = 'pns2026_estado_v1';
 
@@ -348,6 +348,10 @@ let filtroSoMeusAtivo = false;
 const filtroSetoresSelecionados = new Set(); // vazio = todos os setores
 let marcadorLocalizacao = null;
 let circuloPrecisaoLocalizacao = null;
+let rastreamentoGpsAtivo = false;
+let seguirCentralizandoMapa = false;
+let posicaoAtual = null; // {lat, lng} — último fix de GPS conhecido (usado também para ordenar o roteiro por proximidade)
+let ordenarRoteiroPorProximidade = false;
 const domiciliosSelecionados = new Set();
 
 async function initMapa() {
@@ -405,8 +409,16 @@ async function initMapa() {
   camadaMarcadores = L.layerGroup().addTo(mapaLeaflet);
 
   mapaLeaflet.on('zoomend', declutterMarcadores);
-  mapaLeaflet.on('locationerror', () => alert('Não foi possível obter sua localização.'));
+  // Se o usuário arrastar o mapa manualmente, para de recentralizar sozinho a cada
+  // atualização de GPS — mas o rastreamento continua e o pino azul segue se movendo.
+  mapaLeaflet.on('dragstart', () => { seguirCentralizandoMapa = false; });
+  mapaLeaflet.on('locationerror', () => {
+    if (rastreamentoGpsAtivo && posicaoAtual) return; // perda momentânea de sinal durante o rastreamento; ele continua tentando sozinho
+    pararRastreamentoGps();
+    alert('Não foi possível obter sua localização. Verifique se o GPS está ativado.');
+  });
   mapaLeaflet.on('locationfound', (e) => {
+    posicaoAtual = e.latlng;
     if (marcadorLocalizacao) {
       marcadorLocalizacao.setLatLng(e.latlng);
     } else {
@@ -433,7 +445,58 @@ async function initMapa() {
         interactive: false,
       }).addTo(mapaLeaflet);
     }
+    if (seguirCentralizandoMapa) {
+      if (mapaLeaflet.getZoom() < 17) {
+        mapaLeaflet.setView(e.latlng, 17);
+      } else {
+        mapaLeaflet.panTo(e.latlng);
+      }
+    }
+    if (ordenarRoteiroPorProximidade && fichaAtualId) {
+      renderRoteiro(domiciliosPorId[fichaAtualId]);
+    }
   });
+}
+
+function alternarRastreamentoGps() {
+  if (!mapaLeaflet) return;
+  if (rastreamentoGpsAtivo) {
+    pararRastreamentoGps();
+    return;
+  }
+  rastreamentoGpsAtivo = true;
+  seguirCentralizandoMapa = true;
+  posicaoAtual = null; // garante que um erro de permissão nesta sessão de rastreamento não fique mascarado por um fix antigo
+  $('btn-localizar').classList.add('ativo');
+  mapaLeaflet.locate({ watch: true, enableHighAccuracy: true, maxZoom: 17 });
+}
+
+function pararRastreamentoGps() {
+  if (!mapaLeaflet) return;
+  mapaLeaflet.stopLocate();
+  rastreamentoGpsAtivo = false;
+  seguirCentralizandoMapa = false;
+  $('btn-localizar').classList.remove('ativo');
+}
+
+function distanciaMetros(lat1, lng1, lat2, lng2) {
+  const raioTerra = 6371000;
+  const rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad;
+  const dLng = (lng2 - lng1) * rad;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLng / 2) ** 2;
+  return raioTerra * 2 * Math.asin(Math.sqrt(a));
+}
+
+function formatarDistancia(metros) {
+  return metros < 1000 ? `${Math.round(metros)} m` : `${(metros / 1000).toFixed(1)} km`;
+}
+
+function alternarOrdenarRoteiroPorProximidade() {
+  if (!posicaoAtual) return;
+  ordenarRoteiroPorProximidade = !ordenarRoteiroPorProximidade;
+  if (fichaAtualId) renderRoteiro(domiciliosPorId[fichaAtualId]);
 }
 
 function corDoStatus(chave) {
@@ -1077,9 +1140,35 @@ function renderRoteiro(d) {
   $('roteiro-setor-num').textContent = d.setor.slice(-4);
   const itens = DADOS.roteiro[d.setor] || [];
   const cont = $('lista-roteiro');
+
+  const btnOrdenar = $('btn-ordenar-roteiro-proximidade');
+  btnOrdenar.classList.toggle('ativo', ordenarRoteiroPorProximidade);
+  btnOrdenar.disabled = !posicaoAtual;
+  btnOrdenar.title = posicaoAtual ? '' : 'Ative "Minha localização" (📍) para ordenar por proximidade';
+
+  // Só dá pra calcular distância pros itens do roteiro que também são domicílios
+  // da amostra (têm lat/lng em DADOS.domicilios) — os demais endereços do CNEFE
+  // completo ficam sem distância e vão para o fim quando a ordenação está ativa.
+  let itensComDistancia = itens.map((it) => {
+    const dom = domiciliosPorId[it.id];
+    const distancia = (posicaoAtual && dom && dom.lat != null && dom.lng != null)
+      ? distanciaMetros(posicaoAtual.lat, posicaoAtual.lng, dom.lat, dom.lng)
+      : null;
+    return { it, distancia };
+  });
+
+  if (ordenarRoteiroPorProximidade && posicaoAtual) {
+    itensComDistancia = [...itensComDistancia].sort((a, b) => {
+      if (a.distancia == null && b.distancia == null) return 0;
+      if (a.distancia == null) return 1;
+      if (b.distancia == null) return -1;
+      return a.distancia - b.distancia;
+    });
+  }
+
   cont.innerHTML = '';
   let elementoAlvo = null;
-  itens.forEach((it) => {
+  itensComDistancia.forEach(({ it, distancia }) => {
     const div = document.createElement('div');
     div.className = 'item-roteiro';
     if (it.alvo) div.classList.add('eh-alvo-selecionado');
@@ -1089,12 +1178,14 @@ function renderRoteiro(d) {
     }
     const domNumero = it.numDomicilio != null ? `<span class="dom-numero">Dom. nº ${it.numDomicilio}</span> ` : '';
     const moradorIt = moradorDe(it.id);
+    const distanciaHtml = distancia != null ? `<span class="distancia-roteiro">📍 ${formatarDistancia(distancia)}</span>` : '';
     div.innerHTML = `${domNumero}Q${it.quadra ?? '?'} F${it.face ?? '?'} — ${it.logradouro || ''}, ${it.numero || 'S/N'}` +
       `${it.complemento ? `<small>${it.complemento}</small>` : ''}` +
-      `${moradorIt ? `<small>Morador: ${moradorIt}</small>` : ''}`;
+      `${moradorIt ? `<small>Morador: ${moradorIt}</small>` : ''}` +
+      distanciaHtml;
     cont.appendChild(div);
   });
-  if (elementoAlvo) {
+  if (elementoAlvo && !ordenarRoteiroPorProximidade) {
     requestAnimationFrame(() => elementoAlvo.scrollIntoView({ block: 'center' }));
   }
 }
@@ -2007,7 +2098,8 @@ function wireEventosGlobais() {
 
   $('btn-menu').addEventListener('click', () => { mostrar('menu-lateral'); atualizarStatusMapaOffline(); });
   $('btn-legenda').addEventListener('click', () => mostrar('painel-legenda'));
-  $('btn-localizar').addEventListener('click', () => mapaLeaflet && mapaLeaflet.locate({ setView: true, maxZoom: 17 }));
+  $('btn-localizar').addEventListener('click', alternarRastreamentoGps);
+  $('btn-ordenar-roteiro-proximidade').addEventListener('click', alternarOrdenarRoteiroPorProximidade);
   $('btn-modo-selecao').addEventListener('click', alternarModoSelecao);
   $('btn-cancelar-selecao').addEventListener('click', cancelarSelecao);
   $('btn-atribuir-selecao').addEventListener('click', abrirEscolhaAtribuirSelecionados);
